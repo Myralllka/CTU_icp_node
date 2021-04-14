@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<package format="2">
+
+  <name>icp_node</name>
+  <version>0.0.1</version>
+  <description>icp_node</description>
+
+  <maintainer email="morhumyk@fel.cvut.cz">Morhunenko Mykola</maintainer>
+  <author email="morhumyk@fel.cvut.cz">Morhunenko Mykola</author>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>libpcl-all-dev</build_depend>
+  <exec_depend>libpcl-all</exec_depend>
+  <depend>roscpp</depend>
+  <depend>nodelet</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>mrs_msgs</depend>
+  <depend>mrs_lib</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>pcl_ros</depend>
+  <depend>pcl_conversions</depend>
+  <depend>pcl_msgs</depend>
+
+  <export>
+
+    <!-- The plugins.xml file defines nodelet as a plugin -->
+    <nodelet plugin="${prefix}/plugins.xml" />
+
+  </export>
+
+</package>
