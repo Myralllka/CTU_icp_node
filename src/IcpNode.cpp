@@ -1,48 +1,38 @@
 #include <IcpNode.h>
 
 namespace icp_node {
-    void IcpNode::callback(const pcl::PCLPointCloud2ConstPtr &msg) {
-
-//        pcl::PCLPointCloud2::Ptr cloud_filtered(new pcl::PCLPointCloud2());
-//        pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
-
-        pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::fromPCLPointCloud2(*msg.get(),*pt_cloud);
-
-        PointCloud::Ptr result(new PointCloud), source, target;
-        std::vector<PCD, Eigen::aligned_allocator<PCD> > data;
+//    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
+    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
+        pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud(new pcl::PointCloud <pcl::PointXYZ>);
+        pcl::copyPointCloud(*msg.get(), *pt_cloud);
 
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*pt_cloud, *pt_cloud, indices);
-        source = pt_cloud;
-//        target = data[i].cloud;
+        Eigen::Matrix4f pair_transform;
+        if (source == nullptr) {
+            source = pt_cloud;
+        } else {
+            PointCloud::Ptr result(new PointCloud);
+            pair_align(source, pt_cloud, result, pair_transform, true);
 
+            //transform current pair into the global transform
+            pcl::transformPointCloud(*result, *result, GlobalTransform);
 
-        PointCloud::Ptr temp(new PointCloud);
-        pair_align(source, target, temp, pairTransform, true);
+            //update the global transform
+            GlobalTransform *= pair_transform;
 
-        //transform current pair into the global transform
-        pcl::transformPointCloud(*temp, *result, GlobalTransform);
-
-        //update the global transform
-        GlobalTransform *= pairTransform;
-
-
-//        sor.setInputCloud(msg);
-//        sor.setLeafSize(1, 1, 1);
-//        sor.filter(*cloud_filtered);
-
-
-//        pub.publish(cloud_filtered);
+            source = pt_cloud;
+            pub.publish(result);
 //        printf("Cloud: width = %d, height = %d\n", msg.get()->width, msg.get()->height);
-        printf("pub");
+            printf("pub");
+        }
     }
 
-    void IcpNode::pair_align(const PointCloud::Ptr& cloud_src,
-                             const PointCloud::Ptr& cloud_tgt,
-                             const PointCloud::Ptr& output,
-                             Eigen::Matrix4f &final_transform,
-                             bool down_sample = false) {
+    void pair_align(const PointCloud::Ptr &cloud_src,
+                    const PointCloud::Ptr &cloud_tgt,
+                    const PointCloud::Ptr &output,
+                    Eigen::Matrix4f &final_transform,
+                    bool down_sample) {
         //
         // Downsample for consistency and speed
         // \note enable this for large datasets
@@ -50,7 +40,7 @@ namespace icp_node {
         PointCloud::Ptr tgt(new PointCloud);
         pcl::VoxelGrid<PointT> grid;
         if (down_sample) {
-            grid.setLeafSize(0.05, 0.05, 0.05);
+            grid.setLeafSize(0.1, 0.1, 0.1);
             grid.setInputCloud(cloud_src);
             grid.filter(*src);
 
@@ -106,7 +96,7 @@ namespace icp_node {
         Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity(), prev, targetToSource;
         PointCloudWithNormals::Ptr reg_result = points_with_normals_src;
         reg.setMaximumIterations(2);
-        for (int i = 0; i < 100; ++i) {
+        for (int i = 0; i < 30; ++i) {
             PCL_INFO ("Iteration Nr. %d.\n", i);
 
             // save cloud for visualization purpose
@@ -139,11 +129,12 @@ namespace icp_node {
         //add the source to the transformed target
         *output += *cloud_src;
 
-        final_transform = targetToSource;
+//        final_transform = targetToSource;
+        final_transform = Ti.inverse();
     }
 
     void IcpNode::onInit() {
-        pub = nh.advertise<PointCloud>("/uav1/points_vexen", 1);
+        pub = nh.advertise<PointCloud>("/uav1/points_icp", 1);
         sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
     }
 }

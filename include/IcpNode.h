@@ -45,20 +45,15 @@ namespace icp_node {
     class IcpNode : public nodelet::Nodelet {
     public:
         void onInit() override;
-
-        void callback(const pcl::PCLPointCloud2ConstPtr &msg);
-
-        static static void pair_align(const PointCloud::Ptr& cloud_src,
-                        const PointCloud::Ptr& cloud_tgt,
-                        const PointCloud::Ptr& output,
-                        Eigen::Matrix4f &final_transform,
-                        bool down_sample);
+        void callback(const PointCloud::ConstPtr &msg);
+//        void callback(const pcl::PCLPointCloud2ConstPtr &msg);
 
     private:
         ros::Subscriber sub;
         ros::NodeHandle nh;
         ros::Publisher pub;
-        Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity(), pairTransform;
+        PointCloud::Ptr source, target;
+        Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
     };
 
     class MyPointRepresentation : public pcl::PointRepresentation<PointNormalT> {
@@ -79,5 +74,10 @@ namespace icp_node {
         }
     };
 
+    void pair_align(const PointCloud::Ptr &cloud_src,
+                    const PointCloud::Ptr &cloud_tgt,
+                    const PointCloud::Ptr &output,
+                    Eigen::Matrix4f &final_transform,
+                    bool down_sample);
 
 }

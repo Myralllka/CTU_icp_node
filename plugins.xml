@@ -1,4 +1,4 @@
-<library path="lib/libLidarNode">
+<library path="lib/libIcpNode">
   <class name="icp_node/IcpNode" type="icp_node::IcpNode" base_class_type="nodelet::Nodelet">
     <description>icp_node nodelet</description>
   </class>
