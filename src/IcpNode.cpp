@@ -1,35 +1,48 @@
 #include <IcpNode.h>
+#include <pcl/common/time.h>
 
 namespace icp_node {
 //    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud(new pcl::PointCloud <pcl::PointXYZ>);
-        pcl::copyPointCloud(*msg.get(), *pt_cloud);
+//        std::cout << "callback" << std::endl;
+        pcl::ScopeTime t11("callback");
+        pcl::PointCloud<pcl::PointXYZ>::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
+
         std::vector<int> indices;
-        pcl::removeNaNFromPointCloud(*pt_cloud, *pt_cloud, indices);
+        pcl::removeNaNFromPointCloud(*input_pt_cloud, *input_pt_cloud, indices);
+
         if (source == nullptr) {
-            source = pt_cloud;
+            source = input_pt_cloud;
         } else {
+            pcl::ScopeTime t12("callback_else_branch");
             PointCloud::Ptr result(new PointCloud);
-            pair_align(source, pt_cloud, GlobalTransform, false);
-            std::cout << GlobalTransform << std::endl;
-            source = pt_cloud;
-            printf("pub\n");
+            pair_align(source, input_pt_cloud, GlobalTransform, true);
+//            std::cout << GlobalTransform << std::endl;
+            Eigen::Affine3d affine(GlobalTransform.cast<double>());
+//            tf::Transform transform;
+//            tf::transformEigenToTF(affine, transform);
+
+//            PointCloud::Ptr tfd_cloud = boost::make_shared<PointCloud>();
+            pcl::transformPointCloud(*source, *source, GlobalTransform);
+//            tfd_cloud->header.frame_id = m_map_frame_id;
+            pub.publish(source);
+//            source = tfd_cloud;
+//            std::cout << "exit from callback" << std::endl;
         }
     }
-
-
 
     void
     pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform,
                bool down_sample) {
+        pcl::ScopeTime t1("pair_align");
         // Downsample for consistency and speed
         // \note enable this for large datasets
         PointCloud::Ptr src(new PointCloud);
         PointCloud::Ptr tgt(new PointCloud);
         pcl::VoxelGrid<PointT> grid;
         if (down_sample) {
-            grid.setLeafSize(0.1, 0.1, 0.1);
+            grid.setLeafSize(0.25, 0.25, 0.25);
             grid.setInputCloud(cloud_src);
             grid.filter(*src);
 
@@ -39,54 +52,32 @@ namespace icp_node {
             src = cloud_src;
             tgt = cloud_tgt;
         }
-
-        // Compute surface normals and curvature
-        PointCloudWithNormals::Ptr points_with_normals_src(new PointCloudWithNormals);
-        PointCloudWithNormals::Ptr points_with_normals_tgt(new PointCloudWithNormals);
-
-        pcl::NormalEstimation<PointT, PointNormalT> norm_est;
-        pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-        norm_est.setSearchMethod(tree);
-        norm_est.setKSearch(30);
-
-        norm_est.setInputCloud(src);
-        norm_est.compute(*points_with_normals_src);
-        pcl::copyPointCloud(*src, *points_with_normals_src);
-
-        norm_est.setInputCloud(tgt);
-        norm_est.compute(*points_with_normals_tgt);
-        pcl::copyPointCloud(*tgt, *points_with_normals_tgt);
-
-        // Instantiate our custom point representation (defined above) ...
-        MyPointRepresentation point_representation;
-        // ... and weight the 'curvature' dimension so that it is balanced against x, y, and z
-        float alpha[4] = {1.0, 1.0, 1.0, 1.0};
-        point_representation.setRescaleValues(alpha);
-
+//        std::cout << src->width << std::endl;
+//        std::cout << src->height << std::endl;
+//        std::cout << src->size() << std::endl;
         // Align
-        pcl::IterativeClosestPointNonLinear<PointNormalT, PointNormalT> reg;
-        reg.setTransformationEpsilon(1e-6);
+        pcl::IterativeClosestPointNonLinear<PointT , PointT> reg;
+//        reg.setTransformationEpsilon(1e-6);
         // Set the maximum distance between two correspondences (src<->tgt) to 10cm
         // Note: adjust this based on the size of your datasets
-        reg.setMaxCorrespondenceDistance(0.1);
-        // Set the point representation
-        reg.setPointRepresentation(pcl::make_shared<const MyPointRepresentation>(point_representation));
-
-        reg.setInputSource(points_with_normals_src);
-        reg.setInputTarget(points_with_normals_tgt);
-
-        // Run the same optimization in a loop and visualize the results
-        Eigen::Matrix4f targetToSource;
-        const PointCloudWithNormals::Ptr& reg_result = points_with_normals_src;
+        reg.setMaxCorrespondenceDistance(10);
+        reg.setInputSource(src);
+        reg.setInputTarget(tgt);
         reg.setMaximumIterations(30);
-
-        PCL_INFO ("Iterations");
-
         // Estimate
-        reg.setInputSource(points_with_normals_src);
+
+        PointCloud::Ptr reg_result = boost::make_shared<PointCloud>();
         reg.align(*reg_result);
 
-        final_transform = reg.getFinalTransformation().inverse();
+        final_transform = reg.getFinalTransformation();
+        Eigen::Affine3f map2newmap;
+        map2newmap = final_transform;
+        const float tf_dist = map2newmap.translation().norm();
+//        const float tf_angl = pcl::anax_t().fromRotationMatrix(map2newmap.rotation()).angle();
+//        std::cout << "Transformation correction\n" << transformation << "\n";
+        std::cout << "\t correction: " << tf_dist << "m translation\n";
+
+
     }
 
     void IcpNode::onInit() {

@@ -22,25 +22,13 @@
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
 
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf_conversions/tf_eigen.h>
+
 namespace icp_node {
 
     using PointT = pcl::PointXYZ;
     using PointCloud = pcl::PointCloud<PointT>;
-    using PointNormalT = pcl::PointNormal;
-    using PointCloudWithNormals = pcl::PointCloud<PointNormalT>;
-
-    struct PCD {
-        PointCloud::Ptr cloud;
-        std::string f_name;
-
-        PCD() : cloud(new PointCloud) {};
-    };
-
-    struct PCDComparator {
-        bool operator()(const PCD &p1, const PCD &p2) {
-            return (p1.f_name < p2.f_name);
-        }
-    };
 
     class IcpNode : public nodelet::Nodelet {
     public:
@@ -56,26 +44,7 @@ namespace icp_node {
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
     };
 
-    class MyPointRepresentation : public pcl::PointRepresentation<PointNormalT> {
-        using pcl::PointRepresentation<PointNormalT>::nr_dimensions_;
-    public:
-        MyPointRepresentation() {
-            // Define the number of dimensions
-            nr_dimensions_ = 4;
-        }
-
-        // Override the copyToFloatArray method to define our feature vector
-        void copyToFloatArray(const PointNormalT &p, float *out) const override {
-            // < x, y, z, curvature >
-            out[0] = p.x;
-            out[1] = p.y;
-            out[2] = p.z;
-            out[3] = p.curvature;
-        }
-    };
-
     void
-    pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform,
-               bool down_sample);
+    pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform, bool down_sample);
 
 }

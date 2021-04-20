@@ -53,3 +53,7 @@ target_link_libraries(
         ${catkin_LIBRARIES}
         ${Eigen_LIBRARIES}
 )
+
+#####################
+#Custom
+set(CMAKE_CXX_FLAGS "")
