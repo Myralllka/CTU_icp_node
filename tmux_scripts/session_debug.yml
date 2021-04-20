@@ -40,7 +40,7 @@ windows:
   - my_control_node:
       layout: tiled
       panes:
-        - waitForControl; roslaunch icp_node icp_node.launch
+        - waitForControl; roslaunch icp_node icp_node.launch DEBUG:=true
   - goto:
       layout: tiled
       panes:

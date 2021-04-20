@@ -11,7 +11,7 @@ namespace icp_node {
             source = pt_cloud;
         } else {
             PointCloud::Ptr result(new PointCloud);
-            pair_align(source, pt_cloud, GlobalTransform, true);
+            pair_align(source, pt_cloud, GlobalTransform, false);
             std::cout << GlobalTransform << std::endl;
             source = pt_cloud;
             printf("pub\n");
