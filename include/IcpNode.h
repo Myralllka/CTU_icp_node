@@ -74,10 +74,8 @@ namespace icp_node {
         }
     };
 
-    void pair_align(const PointCloud::Ptr &cloud_src,
-                    const PointCloud::Ptr &cloud_tgt,
-                    const PointCloud::Ptr &output,
-                    Eigen::Matrix4f &final_transform,
-                    bool down_sample);
+    void
+    pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform,
+               bool down_sample);
 
 }

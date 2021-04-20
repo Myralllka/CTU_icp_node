@@ -5,35 +5,24 @@ namespace icp_node {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
         pcl::PointCloud<pcl::PointXYZ>::Ptr pt_cloud(new pcl::PointCloud <pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *pt_cloud);
-
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*pt_cloud, *pt_cloud, indices);
-        Eigen::Matrix4f pair_transform;
         if (source == nullptr) {
             source = pt_cloud;
         } else {
             PointCloud::Ptr result(new PointCloud);
-            pair_align(source, pt_cloud, result, pair_transform, true);
-
-            //transform current pair into the global transform
-            pcl::transformPointCloud(*result, *result, GlobalTransform);
-
-            //update the global transform
-            GlobalTransform *= pair_transform;
-
+            pair_align(source, pt_cloud, GlobalTransform, true);
+            std::cout << GlobalTransform << std::endl;
             source = pt_cloud;
-            pub.publish(result);
-//        printf("Cloud: width = %d, height = %d\n", msg.get()->width, msg.get()->height);
-            printf("pub");
+            printf("pub\n");
         }
     }
 
-    void pair_align(const PointCloud::Ptr &cloud_src,
-                    const PointCloud::Ptr &cloud_tgt,
-                    const PointCloud::Ptr &output,
-                    Eigen::Matrix4f &final_transform,
-                    bool down_sample) {
-        //
+
+
+    void
+    pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform,
+               bool down_sample) {
         // Downsample for consistency and speed
         // \note enable this for large datasets
         PointCloud::Ptr src(new PointCloud);
@@ -50,7 +39,6 @@ namespace icp_node {
             src = cloud_src;
             tgt = cloud_tgt;
         }
-
 
         // Compute surface normals and curvature
         PointCloudWithNormals::Ptr points_with_normals_src(new PointCloudWithNormals);
@@ -69,14 +57,12 @@ namespace icp_node {
         norm_est.compute(*points_with_normals_tgt);
         pcl::copyPointCloud(*tgt, *points_with_normals_tgt);
 
-        //
         // Instantiate our custom point representation (defined above) ...
         MyPointRepresentation point_representation;
         // ... and weight the 'curvature' dimension so that it is balanced against x, y, and z
         float alpha[4] = {1.0, 1.0, 1.0, 1.0};
         point_representation.setRescaleValues(alpha);
 
-        //
         // Align
         pcl::IterativeClosestPointNonLinear<PointNormalT, PointNormalT> reg;
         reg.setTransformationEpsilon(1e-6);
@@ -89,48 +75,18 @@ namespace icp_node {
         reg.setInputSource(points_with_normals_src);
         reg.setInputTarget(points_with_normals_tgt);
 
-
-
-        //
         // Run the same optimization in a loop and visualize the results
-        Eigen::Matrix4f Ti = Eigen::Matrix4f::Identity(), prev, targetToSource;
-        PointCloudWithNormals::Ptr reg_result = points_with_normals_src;
-        reg.setMaximumIterations(2);
-        for (int i = 0; i < 30; ++i) {
-            PCL_INFO ("Iteration Nr. %d.\n", i);
+        Eigen::Matrix4f targetToSource;
+        const PointCloudWithNormals::Ptr& reg_result = points_with_normals_src;
+        reg.setMaximumIterations(30);
 
-            // save cloud for visualization purpose
-            points_with_normals_src = reg_result;
+        PCL_INFO ("Iterations");
 
-            // Estimate
-            reg.setInputSource(points_with_normals_src);
-            reg.align(*reg_result);
+        // Estimate
+        reg.setInputSource(points_with_normals_src);
+        reg.align(*reg_result);
 
-            //accumulate transformation between each Iteration
-            Ti = reg.getFinalTransformation() * Ti;
-
-            //if the difference between this transformation and the previous one
-            //is smaller than the threshold, refine the process by reducing
-            //the maximal correspondence distance
-            if (std::abs((reg.getLastIncrementalTransformation() - prev).sum()) < reg.getTransformationEpsilon())
-                reg.setMaxCorrespondenceDistance(reg.getMaxCorrespondenceDistance() - 0.001);
-
-            prev = reg.getLastIncrementalTransformation();
-        }
-
-        //
-        // Get the transformation from target to source
-        targetToSource = Ti.inverse();
-
-        //
-        // Transform target back in source frame
-        pcl::transformPointCloud(*cloud_tgt, *output, targetToSource);
-
-        //add the source to the transformed target
-        *output += *cloud_src;
-
-//        final_transform = targetToSource;
-        final_transform = Ti.inverse();
+        final_transform = reg.getFinalTransformation().inverse();
     }
 
     void IcpNode::onInit() {
