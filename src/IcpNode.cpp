@@ -1,5 +1,5 @@
 #include <IcpNode.h>
-#include <pcl/common/time.h>
+
 
 namespace icp_node {
 //    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
@@ -11,6 +11,12 @@ namespace icp_node {
 
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*input_pt_cloud, *input_pt_cloud, indices);
+        pcl::CropBox<pcl::PointXYZ> boxFilter;
+        boxFilter.setMin(Eigen::Vector4f(-0.4, -0.4, -0.4, 1));
+        boxFilter.setMax(Eigen::Vector4f(0.4, 0.4, 0.4, 1));
+        boxFilter.setNegative(true);
+        boxFilter.setInputCloud(input_pt_cloud);
+        boxFilter.filter(*input_pt_cloud);
 
         if (source == nullptr) {
             source = input_pt_cloud;
@@ -18,26 +24,18 @@ namespace icp_node {
             pcl::ScopeTime t12("callback_else_branch");
             PointCloud::Ptr result(new PointCloud);
             pair_align(source, input_pt_cloud, GlobalTransform, true);
-//            std::cout << GlobalTransform << std::endl;
             Eigen::Affine3d affine(GlobalTransform.cast<double>());
-//            tf::Transform transform;
-//            tf::transformEigenToTF(affine, transform);
-
-//            PointCloud::Ptr tfd_cloud = boost::make_shared<PointCloud>();
             pcl::transformPointCloud(*source, *source, GlobalTransform);
-//            tfd_cloud->header.frame_id = m_map_frame_id;
             pub.publish(source);
-//            source = tfd_cloud;
 //            std::cout << "exit from callback" << std::endl;
         }
     }
 
-    void
-    pair_align(const PointCloud::Ptr &cloud_src, const PointCloud::Ptr &cloud_tgt, Eigen::Matrix4f &final_transform,
-               bool down_sample) {
+    void IcpNode::pair_align(const PointCloud::Ptr &cloud_src,
+                             const PointCloud::Ptr &cloud_tgt,
+                             Eigen::Matrix4f &final_transform,
+                             bool down_sample) {
         pcl::ScopeTime t1("pair_align");
-        // Downsample for consistency and speed
-        // \note enable this for large datasets
         PointCloud::Ptr src(new PointCloud);
         PointCloud::Ptr tgt(new PointCloud);
         pcl::VoxelGrid<PointT> grid;
@@ -56,15 +54,12 @@ namespace icp_node {
 //        std::cout << src->height << std::endl;
 //        std::cout << src->size() << std::endl;
         // Align
-        pcl::IterativeClosestPointNonLinear<PointT , PointT> reg;
-//        reg.setTransformationEpsilon(1e-6);
-        // Set the maximum distance between two correspondences (src<->tgt) to 10cm
-        // Note: adjust this based on the size of your datasets
+        pcl::IterativeClosestPointNonLinear<PointT, PointT> reg;
+
         reg.setMaxCorrespondenceDistance(10);
         reg.setInputSource(src);
         reg.setInputTarget(tgt);
         reg.setMaximumIterations(30);
-        // Estimate
 
         PointCloud::Ptr reg_result = boost::make_shared<PointCloud>();
         reg.align(*reg_result);
@@ -73,10 +68,7 @@ namespace icp_node {
         Eigen::Affine3f map2newmap;
         map2newmap = final_transform;
         const float tf_dist = map2newmap.translation().norm();
-//        const float tf_angl = pcl::anax_t().fromRotationMatrix(map2newmap.rotation()).angle();
-//        std::cout << "Transformation correction\n" << transformation << "\n";
         std::cout << "\t correction: " << tf_dist << "m translation\n";
-
 
     }
 
