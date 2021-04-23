@@ -5,7 +5,6 @@ namespace icp_node {
 //    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
 //        std::cout << "callback" << std::endl;
-        pcl::ScopeTime t11("callback");
 
         pcl::PointCloud<pcl::PointXYZ>::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
@@ -19,19 +18,19 @@ namespace icp_node {
         if (source == nullptr) {
             source = input_pt_cloud;
         } else {
-            pcl::ScopeTime t12("callback_else_branch");
+//            pcl::ScopeTime t12("callback_else_branch");
             PointCloud::Ptr result(new PointCloud);
             pair_align(source, input_pt_cloud, result, GlobalTransform);
             Eigen::Affine3d affine(GlobalTransform.cast<double>());
-            pcl::transformPointCloud(*source, *source, affine.inverse());
-
+            pcl::transformPointCloud(*source, *source, affine);
+            std::cout <<"Transformation mat:\n"<< GlobalTransform << std::endl;
             pub.publish(source);
         }
     }
 
     void IcpNode::pair_align(const PointCloud::Ptr &src,
                              const PointCloud::Ptr &tgt,
-                             const PointCloud::Ptr& res,
+                             const PointCloud::Ptr &res,
                              Eigen::Matrix4f &final_transform) {
         pcl::ScopeTime t1("pair_align");
 
