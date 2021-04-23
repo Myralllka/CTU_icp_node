@@ -48,7 +48,7 @@ namespace icp_node {
         pcl::CropBox<pcl::PointXYZ> box_filter;
         pcl::VoxelGrid<PointT> voxel_filter;
         pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
-        void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr res,
+        void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr& res,
                         Eigen::Matrix4f &final_transform);
 
     };

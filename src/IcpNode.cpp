@@ -12,6 +12,7 @@ namespace icp_node {
 
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*input_pt_cloud, *input_pt_cloud, indices);
+
         box_filter.setInputCloud(input_pt_cloud);
         box_filter.filter(*input_pt_cloud);
 
@@ -22,15 +23,15 @@ namespace icp_node {
             PointCloud::Ptr result(new PointCloud);
             pair_align(source, input_pt_cloud, result, GlobalTransform);
             Eigen::Affine3d affine(GlobalTransform.cast<double>());
-            pcl::transformPointCloud(*source, *source, GlobalTransform);
+            pcl::transformPointCloud(*source, *source, affine.inverse());
+
             pub.publish(source);
-//            std::cout << "exit from callback" << std::endl;
         }
     }
 
     void IcpNode::pair_align(const PointCloud::Ptr &src,
                              const PointCloud::Ptr &tgt,
-                             const PointCloud::Ptr res,
+                             const PointCloud::Ptr& res,
                              Eigen::Matrix4f &final_transform) {
         pcl::ScopeTime t1("pair_align");
 
@@ -44,8 +45,8 @@ namespace icp_node {
         icp.setInputSource(src);
         icp.setInputTarget(tgt);
 
-        PointCloud::Ptr reg_result = boost::make_shared<PointCloud>();
-        icp.align(*reg_result);
+//        PointCloud::Ptr reg_result = boost::make_shared<PointCloud>();
+        icp.align(*res, Eigen::Affine3f::Identity().matrix());
 
         final_transform = icp.getFinalTransformation();
         Eigen::Affine3f map2newmap;
