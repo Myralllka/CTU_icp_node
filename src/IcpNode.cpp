@@ -6,15 +6,12 @@ namespace icp_node {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
 //        std::cout << "callback" << std::endl;
         pcl::ScopeTime t11("callback");
+
         pcl::PointCloud<pcl::PointXYZ>::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
 
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*input_pt_cloud, *input_pt_cloud, indices);
-        pcl::CropBox<pcl::PointXYZ> boxFilter;
-        boxFilter.setMin(Eigen::Vector4f(-0.4, -0.4, -0.4, 1));
-        boxFilter.setMax(Eigen::Vector4f(0.4, 0.4, 0.4, 1));
-        boxFilter.setNegative(true);
         boxFilter.setInputCloud(input_pt_cloud);
         boxFilter.filter(*input_pt_cloud);
 
@@ -73,6 +70,10 @@ namespace icp_node {
     }
 
     void IcpNode::onInit() {
+        boxFilter.setMin(Eigen::Vector4f(-0.4, -0.4, -0.4, 1));
+        boxFilter.setMax(Eigen::Vector4f(0.4, 0.4, 0.4, 1));
+        boxFilter.setNegative(true);
+        
         pub = nh.advertise<PointCloud>("/uav1/points_icp", 1);
         sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
     }

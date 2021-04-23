@@ -45,7 +45,7 @@ namespace icp_node {
         ros::Publisher pub;
         PointCloud::Ptr source, target;
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
-
+        pcl::CropBox<pcl::PointXYZ> boxFilter;
         void pair_align(const PointCloud::Ptr &cloud_src,
                         const PointCloud::Ptr &cloud_tgt,
                         Eigen::Matrix4f &final_transform,
