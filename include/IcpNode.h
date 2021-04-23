@@ -45,11 +45,11 @@ namespace icp_node {
         ros::Publisher pub;
         PointCloud::Ptr source, target;
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
-        pcl::CropBox<pcl::PointXYZ> boxFilter;
-        void pair_align(const PointCloud::Ptr &cloud_src,
-                        const PointCloud::Ptr &cloud_tgt,
-                        Eigen::Matrix4f &final_transform,
-                        bool down_sample);
+        pcl::CropBox<pcl::PointXYZ> box_filter;
+        pcl::VoxelGrid<PointT> voxel_filter;
+        pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
+        void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr res,
+                        Eigen::Matrix4f &final_transform);
 
     };
 }
