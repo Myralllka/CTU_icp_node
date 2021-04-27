@@ -28,6 +28,8 @@
 #include <tf_conversions/tf_eigen.h>
 #include <pcl/common/time.h>
 
+#include <thread>
+
 namespace icp_node {
 
     using PointT = pcl::PointXYZ;
@@ -39,15 +41,19 @@ namespace icp_node {
 
         void callback(const PointCloud::ConstPtr &msg);
 
+        void processing(PointCloud::Ptr &input_cloud);
+
     private:
         ros::Subscriber sub;
         ros::NodeHandle nh;
-        ros::Publisher pub;
+        ros::Publisher pub_result;
+        ros::Publisher pub_source_transformed;
         PointCloud::Ptr source, target;
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
         pcl::CropBox<pcl::PointXYZ> box_filter;
         pcl::VoxelGrid<PointT> voxel_filter;
-        pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
+
+        std::mutex processing_mutex;
 
         void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
                         Eigen::Matrix4f &final_transform);

@@ -4,28 +4,11 @@
 namespace icp_node {
 //    void IcpNode::callback(const PointCloud::ConstPtr &msg) {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
-//        std::cout << "callback" << std::endl;
-
-        pcl::PointCloud<pcl::PointXYZ>::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        PointCloud::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
-
-        std::vector<int> indices;
-        pcl::removeNaNFromPointCloud(*input_pt_cloud, *input_pt_cloud, indices);
-
         box_filter.setInputCloud(input_pt_cloud);
         box_filter.filter(*input_pt_cloud);
-
-        if (source == nullptr) {
-            source = input_pt_cloud;
-        } else {
-//            pcl::ScopeTime t12("callback_else_branch");
-            PointCloud::Ptr result(new PointCloud);
-            pair_align(source, input_pt_cloud, result, GlobalTransform);
-            Eigen::Affine3d affine(GlobalTransform.cast<double>());
-            pcl::transformPointCloud(*source, *source, affine);
-            std::cout <<"Transformation mat:\n"<< GlobalTransform << std::endl;
-            pub.publish(source);
-        }
+        processing(input_pt_cloud);
     }
 
     void IcpNode::pair_align(const PointCloud::Ptr &src,
@@ -39,13 +22,17 @@ namespace icp_node {
 
         voxel_filter.setInputCloud(tgt);
         voxel_filter.filter(*tgt);
+        pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
+
+        icp.setMaxCorrespondenceDistance(4);
+        icp.setMaximumIterations(30);
 
         // Align
         icp.setInputSource(src);
         icp.setInputTarget(tgt);
 
 //        PointCloud::Ptr reg_result = boost::make_shared<PointCloud>();
-        icp.align(*res, Eigen::Affine3f::Identity().matrix());
+        icp.align(*res);
 
         final_transform = icp.getFinalTransformation();
         Eigen::Affine3f map2newmap;
@@ -53,6 +40,25 @@ namespace icp_node {
         const float tf_dist = map2newmap.translation().norm();
         std::cout << "\t correction: " << tf_dist << "m translation\n";
 
+    }
+
+    void IcpNode::processing(PointCloud::Ptr &input_cloud) {
+//        while (ros::ok()) {
+//        std::lock_guard<std::mutex> lock(processing_mutex);
+        if (source == nullptr) {
+            source = input_cloud;
+        } else {
+            PointCloud::Ptr result(new PointCloud);
+            Eigen::Matrix4f tmp_transform = Eigen::Matrix4f::Identity();
+            pair_align(input_cloud, source, result, tmp_transform);
+            PointCloud::Ptr tmp_pc(new PointCloud);
+            pcl::transformPointCloud(*source, *tmp_pc, tmp_transform.inverse());
+            GlobalTransform *= tmp_transform;
+            std::cout << "Transformation mat:\n" << tmp_transform.inverse() << std::endl;
+            pub_source_transformed.publish(tmp_pc);
+            pub_result.publish(result);
+        }
+//        }
     }
 
     void IcpNode::onInit() {
@@ -63,12 +69,13 @@ namespace icp_node {
         //
         voxel_filter.setLeafSize(0.25, 0.25, 0.25);
         //
-//        icp.setMaxCorrespondenceDistance(10);
-        icp.setMaximumIterations(30);
-        //
-        pub = nh.advertise<PointCloud>("/uav1/points_icp", 1);
+        pub_result = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
+//        pub_source_transformed = nh.advertise<PointCloud>("/uav1/points_icp/src", 1);
         sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
+//        std::thread data_processing(&IcpNode::processing, this);
+//        data_processing.detach();
     }
+
 }
 
 PLUGINLIB_EXPORT_CLASS(icp_node::IcpNode, nodelet::Nodelet);

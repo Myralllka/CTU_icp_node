@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
         )
 
 find_package(Eigen3 REQUIRED)
+find_package(Threads REQUIRED)
 set(Eigen_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
 set(Eigen_LIBRARIES ${Eigen_LIBRARIES})
 
