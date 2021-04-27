@@ -41,14 +41,13 @@ namespace icp_node {
 
         void callback(const PointCloud::ConstPtr &msg);
 
-        void processing(PointCloud::Ptr &input_cloud);
+        void processing(PointCloud::Ptr &msg_input_cloud);
 
     private:
         ros::Subscriber sub;
         ros::NodeHandle nh;
-        ros::Publisher pub_result;
-        ros::Publisher pub_source_transformed;
-        PointCloud::Ptr source, target;
+        ros::Publisher pub;
+        PointCloud::Ptr origin_pc;
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
 
         std::mutex processing_mutex;
