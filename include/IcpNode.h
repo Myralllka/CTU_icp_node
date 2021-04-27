@@ -50,12 +50,10 @@ namespace icp_node {
         ros::Publisher pub_source_transformed;
         PointCloud::Ptr source, target;
         Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
-        pcl::CropBox<pcl::PointXYZ> box_filter;
-        pcl::VoxelGrid<PointT> voxel_filter;
 
         std::mutex processing_mutex;
 
-        void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
+        static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
                         Eigen::Matrix4f &final_transform);
 
     };
