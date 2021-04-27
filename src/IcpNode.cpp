@@ -45,12 +45,13 @@ namespace icp_node {
         if (origin_pc == nullptr) {
             origin_pc = msg_input_cloud;
         } else {
+            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
             PointCloud::Ptr result(new PointCloud);
-            Eigen::Matrix4f tmp_transform = Eigen::Matrix4f::Identity();
-            pair_align(msg_input_cloud, origin_pc, result, tmp_transform);
+            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
+            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
             PointCloud::Ptr tmp_pc(new PointCloud);
-
-            pcl::transformPointCloud(*origin_pc, *tmp_pc, tmp_transform.inverse());
+            global_transformation_m *= tmp_transformation;
+            pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
             pub.publish(tmp_pc);
         }

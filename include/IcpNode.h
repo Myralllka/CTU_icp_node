@@ -48,7 +48,7 @@ namespace icp_node {
         ros::NodeHandle nh;
         ros::Publisher pub;
         PointCloud::Ptr origin_pc;
-        Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
+        Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();
 
         std::mutex processing_mutex;
 

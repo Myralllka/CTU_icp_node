@@ -442,8 +442,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 6.173023223876953
-        Min Value: -3.0824413299560547
+        Max Value: 6.500591278076172
+        Min Value: -5.98477840423584
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -490,7 +490,7 @@ Visualization Manager:
       Size (Pixels): 3
       Size (m): 0.03999999910593033
       Style: Flat Squares
-      Topic: /uav1/points_icp/src
+      Topic: /uav1/points_icp/res
       Unreliable: true
       Use Fixed Frame: true
       Use rainbow: true
