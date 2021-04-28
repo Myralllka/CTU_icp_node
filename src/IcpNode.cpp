@@ -35,27 +35,29 @@ namespace icp_node {
         if (origin_pc == nullptr) {
             origin_pc = msg_input_cloud;
         } else {
-            PointCloud::Ptr result(new PointCloud);
-            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
-            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
-            PointCloud::Ptr tmp_pc(new PointCloud);
-            pcl::transformPointCloud(*origin_pc, *tmp_pc, tmp_transformation.inverse());
-            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
-            pub.publish(tmp_pc);
+//            PointCloud::Ptr result(new PointCloud);
+//            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
+//            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
+//            PointCloud::Ptr tmp_pc(new PointCloud);
+//            pcl::transformPointCloud(*origin_pc, *tmp_pc, tmp_transformation.inverse());
+//            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
+//            pub.publish(tmp_pc);
             // iterative approach
             pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
-            tmp_transformation = Eigen::Matrix4f::Identity();
+            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
+            PointCloud::Ptr result(new PointCloud);
+            PointCloud::Ptr tmp_pc(new PointCloud);
             pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
-            global_transformation_m = global_transformation_m * tmp_transformation;
+            global_transformation_m = tmp_transformation * global_transformation_m;
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
-            pub_iterative.publish(tmp_pc);
+            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
+            pub.publish(tmp_pc);
         }
     }
 
     void IcpNode::onInit() {
-        pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 8);
-        pub_iterative = nh.advertise<PointCloud>("/uav1/points_icp/iter", 8);
-        sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 8, &IcpNode::callback, this);
+        pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
+        sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
     }
 
     void IcpNode::pair_align(const PointCloud::Ptr &src,
@@ -68,12 +70,12 @@ namespace icp_node {
 
         voxel_filter.setInputCloud(tgt);
         voxel_filter.filter(*tgt);
-        pcl::IterativeClosestPoint<PointT, PointT> icp;
+        pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
 
         icp.setMaxCorrespondenceDistance(1.5);
         icp.setEuclideanFitnessEpsilon(0);
         icp.setTransformationEpsilon(0.00000001);
-        icp.setMaximumIterations(30);
+        icp.setMaximumIterations(15);
 
         // Align
         icp.setInputSource(src);

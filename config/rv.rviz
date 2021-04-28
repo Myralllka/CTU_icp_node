@@ -10,6 +10,7 @@ Panels:
         - /Odometry1/odom_main1/Shape1
         - /PointCloud21
         - /PointCloud22
+        - /PointCloud23
       Splitter Ratio: 0.6081632375717163
     Tree Height: 789
   - Class: rviz/Selection
@@ -442,8 +443,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 6.500591278076172
-        Min Value: -5.98477840423584
+        Max Value: 6.767567157745361
+        Min Value: -6.385125160217285
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -476,7 +477,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 0; 0; 0
+      Color: 255; 0; 0
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
@@ -491,6 +492,34 @@ Visualization Manager:
       Size (m): 0.03999999910593033
       Style: Flat Squares
       Topic: /uav1/points_icp/res
+      Unreliable: true
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 6.696621417999268
+        Min Value: -3.517780303955078
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 0; 0; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.03999999910593033
+      Style: Flat Squares
+      Topic: /uav1/points_icp/iter
       Unreliable: true
       Use Fixed Frame: true
       Use rainbow: true
@@ -539,9 +568,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2197962999343872
+      Pitch: 0.7247968316078186
       Target Frame: uav1/fcu
-      Yaw: 5.850427627563477
+      Yaw: 0.01724720001220703
     Saved: ~
 Window Geometry:
   Displays:
