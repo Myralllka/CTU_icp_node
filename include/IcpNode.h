@@ -47,6 +47,7 @@ namespace icp_node {
         ros::Subscriber sub;
         ros::NodeHandle nh;
         ros::Publisher pub;
+        ros::Publisher pub_iterative;
         PointCloud::Ptr origin_pc;
         Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();
 
