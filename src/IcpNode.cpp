@@ -14,6 +14,28 @@ namespace icp_node {
         processing(input_pt_cloud);
     }
 
+    void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
+        std::lock_guard<std::mutex> lock(processing_mutex);
+        if (origin_pc == nullptr) {
+            origin_pc = msg_input_cloud;
+        } else {
+            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
+            PointCloud::Ptr result(new PointCloud);
+            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
+            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
+            PointCloud::Ptr tmp_pc(new PointCloud);
+            global_transformation_m = tmp_transformation * global_transformation_m;
+            pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
+            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
+            pub.publish(tmp_pc);
+        }
+    }
+
+    void IcpNode::onInit() {
+        pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
+        sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
+    }
+
     void IcpNode::pair_align(const PointCloud::Ptr &src,
                              const PointCloud::Ptr &tgt,
                              const PointCloud::Ptr &res,
@@ -38,28 +60,6 @@ namespace icp_node {
         icp.align(*res);
 
         final_transform = icp.getFinalTransformation();
-    }
-
-    void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
-        std::lock_guard<std::mutex> lock(processing_mutex);
-        if (origin_pc == nullptr) {
-            origin_pc = msg_input_cloud;
-        } else {
-            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
-            PointCloud::Ptr result(new PointCloud);
-            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
-            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
-            PointCloud::Ptr tmp_pc(new PointCloud);
-            global_transformation_m *= tmp_transformation;
-            pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
-            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
-            pub.publish(tmp_pc);
-        }
-    }
-
-    void IcpNode::onInit() {
-        pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
-        sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
     }
 
 }
