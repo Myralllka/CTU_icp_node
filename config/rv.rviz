@@ -8,9 +8,6 @@ Panels:
         - /TF1/Tree1
         - /Odometry1/odom_main1
         - /Odometry1/odom_main1/Shape1
-        - /PointCloud21
-        - /PointCloud22
-        - /PointCloud23
       Splitter Ratio: 0.6081632375717163
     Tree Height: 789
   - Class: rviz/Selection
@@ -76,10 +73,50 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        base_link:
+          Value: true
+        base_link_frd:
+          Value: true
+        map:
+          Value: true
+        map_ned:
+          Value: true
+        odom:
+          Value: true
+        odom_ned:
+          Value: true
+        uav1/fcu:
+          Value: true
+        uav1/fcu/arms:
+          Value: true
+        uav1/fcu/arms_red:
+          Value: true
+        uav1/fcu/props:
+          Value: true
+        uav1/fcu/uav_marker:
+          Value: true
+        uav1/fcu_untilted:
+          Value: true
+        uav1/garmin:
+          Value: true
+        uav1/gps_origin:
+          Value: true
+        uav1/local_origin:
+          Value: true
+        uav1/os_imu:
+          Value: true
+        uav1/os_lidar:
+          Value: true
+        uav1/os_sensor:
+          Value: true
+        uav1/stable_origin:
+          Value: true
+        uav1/utm_origin:
+          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF
@@ -87,9 +124,33 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        uav1/fcu:
+          uav1/fcu/arms:
+            {}
+          uav1/fcu/arms_red:
+            {}
+          uav1/fcu/props:
+            {}
+          uav1/fcu/uav_marker:
+            {}
+          uav1/fcu_untilted:
+            {}
+          uav1/garmin:
+            {}
+          uav1/gps_origin:
+            uav1/utm_origin:
+              {}
+          uav1/local_origin:
+            {}
+          uav1/os_sensor:
+            uav1/os_imu:
+              {}
+            uav1/os_lidar:
+              {}
+          uav1/stable_origin:
+            {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -443,8 +504,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 6.767567157745361
-        Min Value: -6.385125160217285
+        Max Value: 6.842667102813721
+        Min Value: -6.5485334396362305
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -568,9 +629,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7247968316078186
+      Pitch: 0.3597971498966217
       Target Frame: uav1/fcu
-      Yaw: 0.01724720001220703
+      Yaw: 3.0554258823394775
     Saved: ~
 Window Geometry:
   Displays:

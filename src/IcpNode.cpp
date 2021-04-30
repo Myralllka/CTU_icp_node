@@ -3,7 +3,7 @@
 
 namespace icp_node {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
-        pcl::ScopeTime t1("callback");
+//        pcl::ScopeTime t1("callback");
         PointCloud::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
         pcl::CropBox<pcl::PointXYZ> box_filter;
@@ -43,7 +43,7 @@ namespace icp_node {
 //            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
 //            pub.publish(tmp_pc);
             // iterative approach
-            Eigen::Affine3f affine_transformation_m;
+            Eigen::Affine3d affine_transformation_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
@@ -54,13 +54,15 @@ namespace icp_node {
             global_transformation_m = tmp_transformation * global_transformation_m;
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
-            pub.publish(tmp_pc);
+//            pub.publish(tmp_pc);
 
-            affine_transformation_m = tmp_transformation;
+            affine_transformation_m = global_transformation_m.cast<double>();
             geometry_msgs::TransformStamped msg;
             ros::Time msg_stamp;
 
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
+            msg.header.frame_id = "uav1/fcu";
+            msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
             msg.transform = tf2::eigenToTransform(affine_transformation_m.inverse()).transform;
             tf_broadcaster.sendTransform(msg);
@@ -78,7 +80,7 @@ namespace icp_node {
                              const PointCloud::Ptr &tgt,
                              const PointCloud::Ptr &res,
                              Eigen::Matrix4f &final_transform) {
-        pcl::ScopeTime t2("pair align");
+//        pcl::ScopeTime t2("pair align");
         pcl::VoxelGrid<PointT> voxel_filter;
         voxel_filter.setLeafSize(0.5, 0.5, 0.5);
 
