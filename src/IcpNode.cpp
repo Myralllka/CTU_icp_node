@@ -43,15 +43,29 @@ namespace icp_node {
 //            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
 //            pub.publish(tmp_pc);
             // iterative approach
-            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
+            Eigen::Affine3f affine_transformation_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
+
+            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
             pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
+
             global_transformation_m = tmp_transformation * global_transformation_m;
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
             pub.publish(tmp_pc);
+
+            affine_transformation_m = tmp_transformation;
+            geometry_msgs::TransformStamped msg;
+            ros::Time msg_stamp;
+
+            pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
+            msg.header.stamp = msg_stamp;
+            msg.transform = tf2::eigenToTransform(affine_transformation_m.inverse()).transform;
+            tf_broadcaster.sendTransform(msg);
+
+//            tf2::eigenToTransform(global_transformation_m.cast<double>);
         }
     }
 
@@ -72,10 +86,10 @@ namespace icp_node {
         voxel_filter.filter(*tgt);
         pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
 
-        icp.setMaxCorrespondenceDistance(1.5);
+        icp.setMaxCorrespondenceDistance(1);
         icp.setEuclideanFitnessEpsilon(0);
         icp.setTransformationEpsilon(0.00000001);
-        icp.setMaximumIterations(15);
+        icp.setMaximumIterations(30);
 
         // Align
         icp.setInputSource(src);

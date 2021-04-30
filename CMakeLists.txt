@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
         mrs_lib
         pcl_ros
         pcl_conversions
+        tf2
         )
 
 find_package(Eigen3 REQUIRED)

@@ -25,6 +25,7 @@
 #include <pcl/registration/transforms.h>
 
 #include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
 #include <tf_conversions/tf_eigen.h>
 #include <pcl/common/time.h>
 
@@ -50,7 +51,7 @@ namespace icp_node {
         ros::Publisher pub_iterative;
         PointCloud::Ptr origin_pc;
         Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();
-
+        tf2_ros::TransformBroadcaster tf_broadcaster;
         std::mutex processing_mutex;
 
         static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
