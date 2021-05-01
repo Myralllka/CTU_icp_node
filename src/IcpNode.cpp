@@ -34,6 +34,7 @@ namespace icp_node {
 
         if (origin_pc == nullptr) {
             origin_pc = msg_input_cloud;
+            origin_position = current_position;
         } else {
 //            PointCloud::Ptr result(new PointCloud);
 //            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
@@ -67,13 +68,14 @@ namespace icp_node {
             msg.transform = tf2::eigenToTransform(affine_transformation_m.inverse()).transform;
             tf_broadcaster.sendTransform(msg);
 
-//            tf2::eigenToTransform(global_transformation_m.cast<double>);
+            // TODO: compare the msg with origin
         }
     }
 
     void IcpNode::onInit() {
         pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
         sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
+        sub_position = nh.subscribe("/uav1/ground_truth", 1, &IcpNode::callback_position, this);
     }
 
     void IcpNode::pair_align(const PointCloud::Ptr &src,
@@ -100,6 +102,11 @@ namespace icp_node {
         icp.align(*res);
 
         final_transform = icp.getFinalTransformation();
+    }
+
+    void IcpNode::callback_position(const nav_msgs::Odometry::ConstPtr &msg) {
+        std::lock_guard<std::mutex> lock(processing_mutex);
+        tf2::fromMsg(msg->pose.pose, current_position);
     }
 
 }

@@ -24,9 +24,12 @@
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
 
+#include <nav_msgs/Odometry.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf/transform_datatypes.h>
 #include <pcl/common/time.h>
 
 #include <thread>
@@ -42,20 +45,30 @@ namespace icp_node {
 
         void callback(const PointCloud::ConstPtr &msg);
 
+        void callback_position(const nav_msgs::Odometry::ConstPtr &msg);
+
         void processing(PointCloud::Ptr &msg_input_cloud);
 
     private:
-        ros::Subscriber sub;
         ros::NodeHandle nh;
+
+        ros::Subscriber sub;
+        ros::Subscriber sub_position;
+
         ros::Publisher pub;
         ros::Publisher pub_iterative;
+        ros::Publisher pub_error;
+
+        tf2::Transform origin_position;
+        tf2::Transform current_position;
+
         PointCloud::Ptr origin_pc;
         Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();
         tf2_ros::TransformBroadcaster tf_broadcaster;
         std::mutex processing_mutex;
 
         static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
-                        Eigen::Matrix4f &final_transform);
+                               Eigen::Matrix4f &final_transform);
 
     };
 }
