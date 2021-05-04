@@ -22,13 +22,15 @@ namespace icp_node {
         processing(input_pt_cloud);
     }
 
-    double compute_distance(const geometry_msgs::TransformStamped& a1, const geometry_msgs::TransformStamped &a2) {
-        std::cout << "x: "<< a2.transform.translation.x << " --- " << a1.transform.translation.x << std::endl;
-        std::cout << "y: " << a2.transform.translation.y << " --- " << a1.transform.translation.y << std::endl;
-        std::cout << "z: " << a2.transform.translation.z << " --- " << a1.transform.translation.z << std::endl;
-        return sqrt((a2.transform.translation.x - a1.transform.translation.x) +
-                    (a2.transform.translation.y - a1.transform.translation.y) +
-                    (a2.transform.translation.z - a1.transform.translation.z));
+    // You can use Eigen to calculate the point to point distance: (pt1-lt2).norm()
+    double compute_distance(const geometry_msgs::TransformStamped &a1, const geometry_msgs::TransformStamped &a2) {
+        auto x1 = static_cast<double>(a1.transform.translation.x);
+        auto x2 = static_cast<double>(a2.transform.translation.x);
+        auto y1 = static_cast<double>(a1.transform.translation.y);
+        auto y2 = static_cast<double>(a2.transform.translation.y);
+        auto z1 = static_cast<double>(a1.transform.translation.z);
+        auto z2 = static_cast<double>(a2.transform.translation.z);
+        return sqrt(((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1)) + ((z2 - z1) * (z2 - z1)));
     }
 
     void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
@@ -53,7 +55,7 @@ namespace icp_node {
 //            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
 //            pub.publish(tmp_pc);
             // iterative approach
-            Eigen::Affine3d affine_transformation_m;
+            Eigen::Affine3d global_transformation_affine_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
@@ -65,20 +67,22 @@ namespace icp_node {
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
 //            pub.publish(tmp_pc);
+            // affine transformation
+            global_transformation_affine_m = global_transformation_m.cast<double>();
 
-            affine_transformation_m = global_transformation_m.cast<double>();
             geometry_msgs::TransformStamped msg;
             ros::Time msg_stamp;
 
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
-            msg.header.frame_id = "uav1/fcu";
+            msg.header.frame_id = "world";
             msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
-            msg.transform = tf2::eigenToTransform(affine_transformation_m.inverse()).transform;
-            tf_broadcaster.sendTransform(current_position);
-
+            msg.transform = tf2::eigenToTransform(global_transformation_affine_m.inverse()).transform;
+            tf_broadcaster.sendTransform(msg);
+            std::cout << current_position.header.frame_id << std::endl;
             // TODO: compare the msg with origin
-            std::cout << "error in transform = "<< compute_distance(current_position, msg) <<"m\n";
+            auto dist = compute_distance(current_position, msg);
+            std::cout << "error in transform = " << dist << "m\n";
         }
     }
 
@@ -122,6 +126,26 @@ namespace icp_node {
         current_position.transform.translation.y = msg->pose.pose.position.y;
         current_position.transform.translation.z = msg->pose.pose.position.z;
         current_position.transform.rotation = msg->pose.pose.orientation;
+    }
+
+    bool IcpNode::transform_to_world(const std::string &input_frame_id,
+                                     ros::Time stamp,
+                                     Eigen::Affine3d &tf_out_affine_transformation) {
+        try {
+            const ros::Duration timeout(1.0 / 100.0);
+            // Obtain transform from sensor into world frame
+            geometry_msgs::TransformStamped transform;
+            transform = tfBuffer.lookupTransform("world", input_frame_id, stamp, timeout);
+            tf_out_affine_transformation = tf2::transformToEigen(transform.transform);
+        }
+        catch (tf2::TransformException &ex) {
+            NODELET_WARN_THROTTLE(1.0, "[%s]: Error during transform from \"%s\" frame to \"%s\" frame.\n\tMSG: %s",
+                                  "icp_node", input_frame_id.c_str(),
+                                  "world", ex.what());
+            return false;
+        }
+        return true;
+
     }
 }
 

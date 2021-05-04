@@ -14,17 +14,18 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/crop_box.h>
-
 #include <pcl/point_representation.h>
 #include <pcl/filters/filter.h>
-
 #include <pcl/features/normal_3d.h>
-
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
 
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
+
+#include <tf2_ros/transform_listener.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_eigen/tf2_eigen.h>
@@ -59,6 +60,9 @@ namespace icp_node {
         ros::Publisher pub_iterative;
         ros::Publisher pub_error;
 
+        tf2_ros::Buffer tfBuffer;
+        tf2_ros::TransformListener listener{tfBuffer};
+
         geometry_msgs::TransformStamped origin_position;
         geometry_msgs::TransformStamped current_position;
 
@@ -70,5 +74,6 @@ namespace icp_node {
         static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
                                Eigen::Matrix4f &final_transform);
 
+        bool transform_to_world(const std::string &input_frame_id, ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
     };
 }
