@@ -1,5 +1,6 @@
 #include <IcpNode.h>
-
+// Matous code https://mrs.felk.cvut.cz/gitlab/vrbamato/uav_detect/blob/ouster/src/pcl_selfloc_nodelet.cpp#L420
+//
 
 namespace icp_node {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
@@ -22,39 +23,34 @@ namespace icp_node {
         processing(input_pt_cloud);
     }
 
-    // You can use Eigen to calculate the point to point distance: (pt1-lt2).norm()
-    double compute_distance(const geometry_msgs::TransformStamped &a1, const geometry_msgs::TransformStamped &a2) {
-        auto x1 = static_cast<double>(a1.transform.translation.x);
-        auto x2 = static_cast<double>(a2.transform.translation.x);
-        auto y1 = static_cast<double>(a1.transform.translation.y);
-        auto y2 = static_cast<double>(a2.transform.translation.y);
-        auto z1 = static_cast<double>(a1.transform.translation.z);
-        auto z2 = static_cast<double>(a2.transform.translation.z);
-        return sqrt(((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1)) + ((z2 - z1) * (z2 - z1)));
-    }
+    // Matous: You can use Eigen to calculate the point to point distance: (pt1-lt2).norm()
+//    double compute_distance(const geometry_msgs::TransformStamped &a1, const geometry_msgs::TransformStamped &a2) {
+//        auto x1 = static_cast<double>(a1.transform.translation.x);
+//        auto x2 = static_cast<double>(a2.transform.translation.x);
+//        auto y1 = static_cast<double>(a1.transform.translation.y);
+//        auto y2 = static_cast<double>(a2.transform.translation.y);
+//        auto z1 = static_cast<double>(a1.transform.translation.z);
+//        auto z2 = static_cast<double>(a2.transform.translation.z);
+//        return sqrt(((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1)) + ((z2 - z1) * (z2 - z1)));
+//    }
 
     void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
         pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
-
+        ros::Time msg_stamp;
         pcl::VoxelGrid<PointT> voxel_filter;
         voxel_filter.setLeafSize(0.5, 0.5, 0.5);
         voxel_filter.setInputCloud(msg_input_cloud);
         voxel_filter.filter(*msg_input_cloud);
 
         std::lock_guard<std::mutex> lock(processing_mutex);
-
+        Eigen::Affine3d msg_to_world_m;
+        get_transformation_to_world(msg_input_cloud->header.frame_id, msg_stamp, msg_to_world_m);
+        // now all PC's are in the world frame
+        pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, msg_to_world_m);
         if (origin_pc == nullptr) {
             origin_pc = msg_input_cloud;
             origin_position = current_position;
         } else {
-//            PointCloud::Ptr result(new PointCloud);
-//            Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
-//            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
-//            PointCloud::Ptr tmp_pc(new PointCloud);
-//            pcl::transformPointCloud(*origin_pc, *tmp_pc, tmp_transformation.inverse());
-//            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
-//            pub.publish(tmp_pc);
-            // iterative approach
             Eigen::Affine3d global_transformation_affine_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
@@ -69,20 +65,19 @@ namespace icp_node {
 //            pub.publish(tmp_pc);
             // affine transformation
             global_transformation_affine_m = global_transformation_m.cast<double>();
-
+            // TF Broadcaster
             geometry_msgs::TransformStamped msg;
-            ros::Time msg_stamp;
-
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
             msg.header.frame_id = "world";
             msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
             msg.transform = tf2::eigenToTransform(global_transformation_affine_m.inverse()).transform;
             tf_broadcaster.sendTransform(msg);
+
             std::cout << current_position.header.frame_id << std::endl;
             // TODO: compare the msg with origin
-            auto dist = compute_distance(current_position, msg);
-            std::cout << "error in transform = " << dist << "m\n";
+//            auto dist = compute_distance(current_position, msg);
+//            std::cout << "error in transform = " << dist << "m\n";
         }
     }
 
@@ -128,9 +123,11 @@ namespace icp_node {
         current_position.transform.rotation = msg->pose.pose.orientation;
     }
 
-    bool IcpNode::transform_to_world(const std::string &input_frame_id,
-                                     ros::Time stamp,
-                                     Eigen::Affine3d &tf_out_affine_transformation) {
+    //    Listener for transformations between frames
+    //    http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28C%2B%2B%29
+    void IcpNode::get_transformation_to_world(const std::string &input_frame_id,
+                                              ros::Time stamp,
+                                              Eigen::Affine3d &tf_out_affine_transformation) {
         try {
             const ros::Duration timeout(1.0 / 100.0);
             // Obtain transform from sensor into world frame
@@ -142,10 +139,7 @@ namespace icp_node {
             NODELET_WARN_THROTTLE(1.0, "[%s]: Error during transform from \"%s\" frame to \"%s\" frame.\n\tMSG: %s",
                                   "icp_node", input_frame_id.c_str(),
                                   "world", ex.what());
-            return false;
         }
-        return true;
-
     }
 }
 

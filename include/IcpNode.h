@@ -74,6 +74,6 @@ namespace icp_node {
         static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
                                Eigen::Matrix4f &final_transform);
 
-        bool transform_to_world(const std::string &input_frame_id, ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
+        void get_transformation_to_world(const std::string &input_frame_id, ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
     };
 }
