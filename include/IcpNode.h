@@ -59,8 +59,8 @@ namespace icp_node {
         ros::Publisher pub_iterative;
         ros::Publisher pub_error;
 
-        tf2::Transform origin_position;
-        tf2::Transform current_position;
+        geometry_msgs::TransformStamped origin_position;
+        geometry_msgs::TransformStamped current_position;
 
         PointCloud::Ptr origin_pc;
         Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();

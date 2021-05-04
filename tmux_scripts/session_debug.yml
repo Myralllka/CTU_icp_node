@@ -10,7 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-        - waitForRos; roslaunch mrs_simulation simulation.launch world_name:=forest gui:=true
+        - waitForRos; roslaunch mrs_simulation simulation.launch world_name:=forest gui:=false
         - waitForOdometry; gz camera -c gzclient_camera -f uav1; history -s gz camera -c gzclient_camera -f uav1
   - status:
       layout: tiled
@@ -19,7 +19,7 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 --f450 --enable-rangefinder --enable-ouster --ouster-model OS1-32 --use-gpu-ray"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 --f450 --enable-rangefinder --enable-ground-truth --enable-ouster --ouster-model OS1-32 --use-gpu-ray"
   - control:
       layout: tiled
       panes:
@@ -50,7 +50,3 @@ windows:
       panes:
         - waitForControl; waitForControl; roslaunch mrs_uav_general logitech_joystick.launch
         - waitForControl; waitForControl; roslaunch mrs_rviz_plugins rviz_interface.launch
-  - layout:
-      layout: tiled
-      panes:
-        - waitForControl; sleep 3; ~/.i3/layout_manager.sh ./layout.json

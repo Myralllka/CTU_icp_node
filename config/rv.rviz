@@ -4,8 +4,8 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /TF1
         - /TF1/Frames1
-        - /TF1/Tree1
         - /Odometry1/odom_main1
         - /Odometry1/odom_main1/Shape1
       Splitter Ratio: 0.6081632375717163
@@ -78,44 +78,48 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_link:
-          Value: true
+          Value: false
         base_link_frd:
-          Value: true
+          Value: false
         map:
-          Value: true
+          Value: false
         map_ned:
-          Value: true
+          Value: false
         odom:
-          Value: true
+          Value: false
         odom_ned:
-          Value: true
+          Value: false
         uav1/fcu:
-          Value: true
+          Value: false
         uav1/fcu/arms:
-          Value: true
+          Value: false
         uav1/fcu/arms_red:
-          Value: true
+          Value: false
         uav1/fcu/props:
-          Value: true
+          Value: false
         uav1/fcu/uav_marker:
-          Value: true
+          Value: false
         uav1/fcu_untilted:
-          Value: true
+          Value: false
         uav1/garmin:
-          Value: true
+          Value: false
         uav1/gps_origin:
-          Value: true
+          Value: false
         uav1/local_origin:
           Value: true
+        uav1/odometry_sensor_ground_truth_link:
+          Value: false
         uav1/os_imu:
-          Value: true
+          Value: false
         uav1/os_lidar:
-          Value: true
+          Value: false
         uav1/os_sensor:
-          Value: true
+          Value: false
         uav1/stable_origin:
           Value: true
         uav1/utm_origin:
+          Value: false
+        world:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -504,8 +508,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 6.842667102813721
-        Min Value: -6.5485334396362305
+        Max Value: 6.677323341369629
+        Min Value: -3.5795602798461914
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -613,7 +617,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 15.06489086151123
+      Distance: 7.626560688018799
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -621,17 +625,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.5906995534896851
-        Y: -2.525979995727539
-        Z: -1.9073486328125e-06
+        X: 2.719118118286133
+        Y: 2.2078514099121094
+        Z: -8.106231689453125e-06
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3597971498966217
+      Pitch: 0.6347970366477966
       Target Frame: uav1/fcu
-      Yaw: 3.0554258823394775
+      Yaw: 0.9104244709014893
     Saved: ~
 Window Geometry:
   Displays:

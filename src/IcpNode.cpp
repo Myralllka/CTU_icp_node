@@ -22,6 +22,15 @@ namespace icp_node {
         processing(input_pt_cloud);
     }
 
+    double compute_distance(const geometry_msgs::TransformStamped& a1, const geometry_msgs::TransformStamped &a2) {
+        std::cout << "x: "<< a2.transform.translation.x << " --- " << a1.transform.translation.x << std::endl;
+        std::cout << "y: " << a2.transform.translation.y << " --- " << a1.transform.translation.y << std::endl;
+        std::cout << "z: " << a2.transform.translation.z << " --- " << a1.transform.translation.z << std::endl;
+        return sqrt((a2.transform.translation.x - a1.transform.translation.x) +
+                    (a2.transform.translation.y - a1.transform.translation.y) +
+                    (a2.transform.translation.z - a1.transform.translation.z));
+    }
+
     void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
         pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
 
@@ -66,9 +75,10 @@ namespace icp_node {
             msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
             msg.transform = tf2::eigenToTransform(affine_transformation_m.inverse()).transform;
-            tf_broadcaster.sendTransform(msg);
+            tf_broadcaster.sendTransform(current_position);
 
             // TODO: compare the msg with origin
+            std::cout << "error in transform = "<< compute_distance(current_position, msg) <<"m\n";
         }
     }
 
@@ -106,9 +116,13 @@ namespace icp_node {
 
     void IcpNode::callback_position(const nav_msgs::Odometry::ConstPtr &msg) {
         std::lock_guard<std::mutex> lock(processing_mutex);
-        tf2::fromMsg(msg->pose.pose, current_position);
+        current_position.header = msg->header;
+        current_position.child_frame_id = msg->child_frame_id;
+        current_position.transform.translation.x = msg->pose.pose.position.x;
+        current_position.transform.translation.y = msg->pose.pose.position.y;
+        current_position.transform.translation.z = msg->pose.pose.position.z;
+        current_position.transform.rotation = msg->pose.pose.orientation;
     }
-
 }
 
 PLUGINLIB_EXPORT_CLASS(icp_node::IcpNode, nodelet::Nodelet);
