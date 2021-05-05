@@ -14,25 +14,14 @@ namespace icp_node {
         box_filter.setInputCloud(input_pt_cloud);
         box_filter.filter(*input_pt_cloud);
 
-        box_filter.setMin(Eigen::Vector4f(-50, -50, -50, 1));
-        box_filter.setMax(Eigen::Vector4f(50, 50, 50, 1));
+        box_filter.setMin(Eigen::Vector4f(-40, -40, -40, 1));
+        box_filter.setMax(Eigen::Vector4f(40, 40, 40, 1));
         box_filter.setNegative(false);
         box_filter.setInputCloud(input_pt_cloud);
         box_filter.filter(*input_pt_cloud);
 
         processing(input_pt_cloud);
     }
-
-    // Matous: You can use Eigen to calculate the point to point distance: (pt1-lt2).norm()
-//    double compute_distance(const geometry_msgs::TransformStamped &a1, const geometry_msgs::TransformStamped &a2) {
-//        auto x1 = static_cast<double>(a1.transform.translation.x);
-//        auto x2 = static_cast<double>(a2.transform.translation.x);
-//        auto y1 = static_cast<double>(a1.transform.translation.y);
-//        auto y2 = static_cast<double>(a2.transform.translation.y);
-//        auto z1 = static_cast<double>(a1.transform.translation.z);
-//        auto z2 = static_cast<double>(a2.transform.translation.z);
-//        return sqrt(((x2 - x1) * (x2 - x1)) + ((y2 - y1) * (y2 - y1)) + ((z2 - z1) * (z2 - z1)));
-//    }
 
     void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
         pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
@@ -43,41 +32,40 @@ namespace icp_node {
         voxel_filter.filter(*msg_input_cloud);
 
         std::lock_guard<std::mutex> lock(processing_mutex);
-        Eigen::Affine3d msg_to_world_m;
-        get_transformation_to_world(msg_input_cloud->header.frame_id, msg_stamp, msg_to_world_m);
-        // now all PC's are in the world frame
-        pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, msg_to_world_m);
         if (origin_pc == nullptr) {
             origin_pc = msg_input_cloud;
+            previous_pc = msg_input_cloud;
             origin_position = current_position;
         } else {
             Eigen::Affine3d global_transformation_affine_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
-
-            pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
-            pair_align(msg_input_cloud, origin_pc, result, tmp_transformation);
-
+            // Find the `tmp_transformation` - transformation from the msg to the previous message pc
+            pair_align(msg_input_cloud, previous_pc, result, tmp_transformation);
+            // global - transformation from current position to the origin
             global_transformation_m = tmp_transformation * global_transformation_m;
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
-//            pub.publish(tmp_pc);
-            // affine transformation
+            pub.publish(tmp_pc);
+
             global_transformation_affine_m = global_transformation_m.cast<double>();
             // TF Broadcaster
             geometry_msgs::TransformStamped msg;
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
-            msg.header.frame_id = "world";
+//            msg.header.frame_id = "uav1/local_origin";
+            msg.header.frame_id = "uav1/fcu";
             msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
             msg.transform = tf2::eigenToTransform(global_transformation_affine_m.inverse()).transform;
+            std::cout << msg.transform << std::endl;
             tf_broadcaster.sendTransform(msg);
 
-            std::cout << current_position.header.frame_id << std::endl;
+//            std::cout << current_position.header.frame_id << std::endl;
             // TODO: compare the msg with origin
 //            auto dist = compute_distance(current_position, msg);
 //            std::cout << "error in transform = " << dist << "m\n";
+            previous_pc = msg_input_cloud;
         }
     }
 
@@ -99,7 +87,7 @@ namespace icp_node {
         voxel_filter.filter(*tgt);
         pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
 
-        icp.setMaxCorrespondenceDistance(1);
+        icp.setMaxCorrespondenceDistance(0.1);
         icp.setEuclideanFitnessEpsilon(0);
         icp.setTransformationEpsilon(0.00000001);
         icp.setMaximumIterations(30);
@@ -125,20 +113,22 @@ namespace icp_node {
 
     //    Listener for transformations between frames
     //    http://wiki.ros.org/tf2/Tutorials/Writing%20a%20tf2%20listener%20%28C%2B%2B%29
-    void IcpNode::get_transformation_to_world(const std::string &input_frame_id,
-                                              ros::Time stamp,
-                                              Eigen::Affine3d &tf_out_affine_transformation) {
+    void
+    IcpNode::get_transformation_to_frame(const std::string &input_frame_id,
+                                         const std::string &destination_frame_id,
+                                         ros::Time stamp,
+                                         Eigen::Affine3d &tf_out_affine_transformation) {
         try {
             const ros::Duration timeout(1.0 / 100.0);
             // Obtain transform from sensor into world frame
             geometry_msgs::TransformStamped transform;
-            transform = tfBuffer.lookupTransform("world", input_frame_id, stamp, timeout);
+            transform = tfBuffer.lookupTransform(input_frame_id, input_frame_id, stamp, timeout);
             tf_out_affine_transformation = tf2::transformToEigen(transform.transform);
         }
         catch (tf2::TransformException &ex) {
             NODELET_WARN_THROTTLE(1.0, "[%s]: Error during transform from \"%s\" frame to \"%s\" frame.\n\tMSG: %s",
                                   "icp_node", input_frame_id.c_str(),
-                                  "world", ex.what());
+                                  destination_frame_id.c_str(), ex.what());
         }
     }
 }

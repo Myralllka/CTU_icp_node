@@ -57,7 +57,6 @@ namespace icp_node {
         ros::Subscriber sub_position;
 
         ros::Publisher pub;
-        ros::Publisher pub_iterative;
         ros::Publisher pub_error;
 
         tf2_ros::Buffer tfBuffer;
@@ -67,6 +66,7 @@ namespace icp_node {
         geometry_msgs::TransformStamped current_position;
 
         PointCloud::Ptr origin_pc;
+        PointCloud::Ptr previous_pc;
         Eigen::Matrix4f global_transformation_m = Eigen::Matrix4f::Identity();
         tf2_ros::TransformBroadcaster tf_broadcaster;
         std::mutex processing_mutex;
@@ -74,6 +74,7 @@ namespace icp_node {
         static void pair_align(const PointCloud::Ptr &src, const PointCloud::Ptr &tgt, const PointCloud::Ptr &res,
                                Eigen::Matrix4f &final_transform);
 
-        void get_transformation_to_world(const std::string &input_frame_id, ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
+        void get_transformation_to_frame(const std::string &input_frame_id, const std::string &destination_frame_id,
+                                         ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
     };
 }
