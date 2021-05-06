@@ -4,7 +4,7 @@
 
 namespace icp_node {
     void IcpNode::callback(const PointCloud::ConstPtr &msg) {
-//        pcl::ScopeTime t1("callback");
+        pcl::ScopeTime t1("callback");
         PointCloud::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
         pcl::CropBox<pcl::PointXYZ> box_filter;
@@ -24,7 +24,6 @@ namespace icp_node {
     }
 
     void IcpNode::processing(PointCloud::Ptr &msg_input_cloud) {
-        pcl::transformPointCloud(*msg_input_cloud, *msg_input_cloud, global_transformation_m);
         ros::Time msg_stamp;
         pcl::VoxelGrid<PointT> voxel_filter;
         voxel_filter.setLeafSize(0.5, 0.5, 0.5);
@@ -36,8 +35,8 @@ namespace icp_node {
             origin_pc = msg_input_cloud;
             previous_pc = msg_input_cloud;
             origin_position = current_position;
+            origin_position.child_frame_id = "world/local_origin";
         } else {
-            Eigen::Affine3d global_transformation_affine_m;
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
@@ -49,22 +48,29 @@ namespace icp_node {
             tmp_pc->header.stamp = msg_input_cloud->header.stamp;
             pub.publish(tmp_pc);
 
-            global_transformation_affine_m = global_transformation_m.cast<double>();
             // TF Broadcaster
             geometry_msgs::TransformStamped msg;
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
-//            msg.header.frame_id = "uav1/local_origin";
             msg.header.frame_id = "uav1/fcu";
             msg.child_frame_id = "uav1/uav";
             msg.header.stamp = msg_stamp;
-            msg.transform = tf2::eigenToTransform(global_transformation_affine_m.inverse()).transform;
-            std::cout << msg.transform << std::endl;
+            Eigen::Affine3d global_transformation_affine;
+            global_transformation_affine = global_transformation_m.cast<double>();
+            msg.transform = tf2::eigenToTransform(global_transformation_affine.inverse()).transform;
             tf_broadcaster.sendTransform(msg);
+            geometry_msgs::TransformStamped from_origin_to_current_gt_transformation;
 
-//            std::cout << current_position.header.frame_id << std::endl;
-            // TODO: compare the msg with origin
-//            auto dist = compute_distance(current_position, msg);
-//            std::cout << "error in transform = " << dist << "m\n";
+            get_transformation_to_frame("world/local_origin",
+                                        current_position.child_frame_id,
+                                        current_position.header.stamp,
+                                        from_origin_to_current_gt_transformation);
+
+            auto epsilon = compare_two_positions(
+                    tf2::eigenToTransform(global_transformation_affine.inverse()),
+                    from_origin_to_current_gt_transformation);
+
+            std::cout << "\ttransformation error is: " << epsilon.first << "m.\n"
+                      << "\trotation error is: " << epsilon.second << "deg.\n";
             previous_pc = msg_input_cloud;
         }
     }
@@ -117,19 +123,40 @@ namespace icp_node {
     IcpNode::get_transformation_to_frame(const std::string &input_frame_id,
                                          const std::string &destination_frame_id,
                                          ros::Time stamp,
-                                         Eigen::Affine3d &tf_out_affine_transformation) {
+                                         geometry_msgs::TransformStamped &tf_out_transformation) {
         try {
             const ros::Duration timeout(1.0 / 100.0);
             // Obtain transform from sensor into world frame
             geometry_msgs::TransformStamped transform;
-            transform = tfBuffer.lookupTransform(input_frame_id, input_frame_id, stamp, timeout);
-            tf_out_affine_transformation = tf2::transformToEigen(transform.transform);
+            tf_out_transformation = tfBuffer.lookupTransform(input_frame_id, input_frame_id, stamp, timeout);
         }
         catch (tf2::TransformException &ex) {
             NODELET_WARN_THROTTLE(1.0, "[%s]: Error during transform from \"%s\" frame to \"%s\" frame.\n\tMSG: %s",
                                   "icp_node", input_frame_id.c_str(),
                                   destination_frame_id.c_str(), ex.what());
         }
+    }
+
+    std::pair<double, double> IcpNode::compare_two_positions(const geometry_msgs::TransformStamped &source,
+                                                             const geometry_msgs::TransformStamped &target) {
+        // Quaternion rotation http://wiki.ros.org/tf2/Tutorials/Quaternions#Relative_rotations
+        // http://docs.ros.org/en/jade/api/tf2/html/classtf2_1_1Quaternion.html
+        tf2::Quaternion q1{source.transform.rotation.x,
+                           source.transform.rotation.y,
+                           source.transform.rotation.z,
+                           -source.transform.rotation.w};
+        tf2::Quaternion q2{target.transform.rotation.x,
+                           target.transform.rotation.y,
+                           target.transform.rotation.z,
+                           -source.transform.rotation.w};
+
+        q2 *= q1;
+
+        Eigen::Vector3d v1, v2;
+        tf2::fromMsg(source.transform.translation, v1);
+        tf2::fromMsg(target.transform.translation, v2);
+
+        return std::pair<double, double>{(v2 - v1).norm(), tfDegrees(q2.getAngle())};
     }
 }
 

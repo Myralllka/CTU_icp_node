@@ -6,6 +6,8 @@
 #include <ros/ros.h>
 #include <boost/foreach.hpp>
 #include <nodelet/nodelet.h>
+#include <thread>
+#include <utility>
 
 #include <pluginlib/class_list_macros.h>
 
@@ -32,8 +34,6 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf/transform_datatypes.h>
 #include <pcl/common/time.h>
-
-#include <thread>
 
 namespace icp_node {
 
@@ -75,6 +75,9 @@ namespace icp_node {
                                Eigen::Matrix4f &final_transform);
 
         void get_transformation_to_frame(const std::string &input_frame_id, const std::string &destination_frame_id,
-                                         ros::Time stamp, Eigen::Affine3d &tf_out_affine_transformation);
+                                         ros::Time stamp, geometry_msgs::TransformStamped &tf_out_transformation);
+
+        static std::pair<double, double> compare_two_positions(const geometry_msgs::TransformStamped &source,
+                                                               const geometry_msgs::TransformStamped &target);
     };
 }
