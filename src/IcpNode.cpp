@@ -40,34 +40,46 @@ namespace icp_node {
             Eigen::Matrix4f tmp_transformation = Eigen::Matrix4f::Identity();
             PointCloud::Ptr result(new PointCloud);
             PointCloud::Ptr tmp_pc(new PointCloud);
+            PointCloud::Ptr tmp_pc2(new PointCloud);
             // Find the `tmp_transformation` - transformation from the msg to the previous message pc
             pair_align(msg_input_cloud, previous_pc, result, tmp_transformation);
             // global - transformation from current position to the origin
             global_transformation_m = tmp_transformation * global_transformation_m;
+//            pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
             pcl::transformPointCloud(*origin_pc, *tmp_pc, global_transformation_m.inverse());
-            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
+//            tmp_pc->header.stamp = msg_input_cloud->header.stamp;
             pub.publish(tmp_pc);
 
             // TF Broadcaster
             geometry_msgs::TransformStamped msg;
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg_stamp);
-            msg.header.frame_id = "uav1/fcu";
-            msg.child_frame_id = "uav1/uav";
+//            msg.header.frame_id = "uav1/fcu";
+            msg.header.frame_id = "uav1/local_origin";
+//            msg.child_frame_id = "uav1/estimated_uav_position";
+            msg.child_frame_id = "uav1/icp_estimated_origin";
             msg.header.stamp = msg_stamp;
             Eigen::Affine3d global_transformation_affine;
             global_transformation_affine = global_transformation_m.cast<double>();
             msg.transform = tf2::eigenToTransform(global_transformation_affine.inverse()).transform;
             tf_broadcaster.sendTransform(msg);
-            geometry_msgs::TransformStamped from_origin_to_current_gt_transformation;
+//            geometry_msgs::TransformStamped from_origin_to_current_gt_transformation;
+            geometry_msgs::TransformStamped from_current_position_to_origin;
 
-            get_transformation_to_frame("world/local_origin",
-                                        current_position.child_frame_id,
+//            get_transformation_to_frame("world/local_origin",
+//                                        current_position.child_frame_id,
+//                                        current_position.header.stamp,
+//                                        from_origin_to_current_gt_transformation);
+            get_transformation_to_frame(current_position.child_frame_id,
+                                        "world/local_origin",
                                         current_position.header.stamp,
-                                        from_origin_to_current_gt_transformation);
+                                        from_current_position_to_origin);
 
+//            auto epsilon = compare_two_positions(
+//                    tf2::eigenToTransform(global_transformation_affine.inverse()),
+//                    from_origin_to_current_gt_transformation);
             auto epsilon = compare_two_positions(
-                    tf2::eigenToTransform(global_transformation_affine.inverse()),
-                    from_origin_to_current_gt_transformation);
+                    tf2::eigenToTransform(global_transformation_affine),
+                    from_current_position_to_origin);
 
             std::cout << "\ttransformation error is: " << epsilon.first << "m.\n"
                       << "\trotation error is: " << epsilon.second << "deg.\n";
@@ -77,6 +89,7 @@ namespace icp_node {
 
     void IcpNode::onInit() {
         pub = nh.advertise<PointCloud>("/uav1/points_icp/res", 1);
+        pub2 = nh.advertise<PointCloud>("/uav1/points_icp/res2", 1);
         sub = nh.subscribe("/uav1/os_cloud_nodelet/points", 1, &IcpNode::callback, this);
         sub_position = nh.subscribe("/uav1/ground_truth", 1, &IcpNode::callback_position, this);
     }
@@ -93,10 +106,10 @@ namespace icp_node {
         voxel_filter.filter(*tgt);
         pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
 
-        icp.setMaxCorrespondenceDistance(0.001);
+        icp.setMaxCorrespondenceDistance(0.03);
         icp.setEuclideanFitnessEpsilon(0);
-        icp.setTransformationEpsilon(0.00000001);
-        icp.setMaximumIterations(30);
+        icp.setTransformationEpsilon(0.0000001);
+        icp.setMaximumIterations(130);
 
         // Align
         icp.setInputSource(src);

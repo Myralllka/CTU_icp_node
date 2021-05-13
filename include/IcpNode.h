@@ -57,6 +57,7 @@ namespace icp_node {
         ros::Subscriber sub_position;
 
         ros::Publisher pub;
+        ros::Publisher pub2;
         ros::Publisher pub_error;
 
         tf2_ros::Buffer tfBuffer;
