@@ -4,7 +4,7 @@
 
   <group>
 
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find icp_node)/config/rv.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find icp_node)/rviz/rv.rviz" />
 
   </group>
 
