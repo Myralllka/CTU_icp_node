@@ -93,7 +93,7 @@ namespace icp_node {
         voxel_filter.filter(*tgt);
         pcl::IterativeClosestPointNonLinear<PointT, PointT> icp;
 
-        icp.setMaxCorrespondenceDistance(0.1);
+        icp.setMaxCorrespondenceDistance(0.001);
         icp.setEuclideanFitnessEpsilon(0);
         icp.setTransformationEpsilon(0.00000001);
         icp.setMaximumIterations(30);
