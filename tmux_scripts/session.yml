@@ -1,7 +1,7 @@
 name: simulation
 root: ./
 startup_window: status
-pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=t650; export WORLD_NAME=simulation; export SENSORS="garmin_down"
+pre_window: export UAV_NAME=uav1; export RUN_TYPE=simulation; export UAV_TYPE=f450; export WORLD_NAME=simulation; export SENSORS="garmin_down"
 windows:
   - roscore:
       layout: tiled
@@ -10,6 +10,7 @@ windows:
   - gazebo:
       layout: tiled
       panes:
+#        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_file:='$(find eagle_gazebo_resources)/worlds/cisarsky_ostrov.world'
         - waitForRos; roslaunch mrs_simulation simulation.launch world_name:=forest gui:=false
         - waitForOdometry; gz camera -c gzclient_camera -f uav1; history -s gz camera -c gzclient_camera -f uav1
   - status:
@@ -19,7 +20,9 @@ windows:
   - spawn:
       layout: tiled
       panes:
-        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 --f450 --enable-rangefinder --enable-ground-truth --enable-ouster --ouster-model OS1-32 --use-gpu-ray"
+        - waitForSimulation; rosservice call /mrs_drone_spawner/spawn "1 $UAV_TYPE --enable-rangefinder --enable-ground-truth --enable-ouster --ouster-model OS1-32 --use-gpu-ray"
+        - 
+
   - control:
       layout: tiled
       panes:
