@@ -3,3 +3,4 @@ tmux_scripts/.tmuxinator.yml
 cmake-build-debug
 .vscode
 build
+export.xyz
