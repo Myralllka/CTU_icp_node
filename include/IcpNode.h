@@ -9,13 +9,17 @@
 #include <thread>
 #include <utility>
 
+#include <sstream>
+#include <algorithm>
+#include <string>
+#include <iterator>
+
 #include <pluginlib/class_list_macros.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/crop_box.h>
 #include <pcl/point_representation.h>
 #include <pcl/filters/filter.h>
 #include <pcl/features/normal_3d.h>
@@ -34,11 +38,9 @@
 #include <tf2/LinearMath/Transform.h>
 #include <tf/transform_datatypes.h>
 #include <pcl/common/time.h>
+#include "aliases.h"
 
 namespace icp_node {
-
-    using p_XYZ_t = pcl::PointXYZ;
-    using pc_XYZ_t = pcl::PointCloud<p_XYZ_t>;
 
     class IcpNode : public nodelet::Nodelet {
     public:
@@ -68,16 +70,16 @@ namespace icp_node {
         tf2_ros::Buffer m_tf_buffer;
         tf2_ros::TransformListener m_listener{m_tf_buffer};
 
-        Eigen::Affine3f m_latest_gt_pose;
-        Eigen::Affine3f m_origin_gt_pose;
+        Eigen::Affine3d m_latest_gt_pose;
+        Eigen::Affine3d m_origin_gt_pose;
 
         // always document what exactly is locked by a mutex (for your own good :)
         std::mutex m_processing_mutex;
         pc_XYZ_t::ConstPtr m_origin_cloud;
         pc_XYZ_t::ConstPtr m_previous_cloud;
-        Eigen::Affine3f m_global_transformation = Eigen::Affine3f::Identity();
+        Eigen::Affine3d m_global_transformation = Eigen::Affine3d::Identity();
 
-        Eigen::Affine3f pair_align(const pc_XYZ_t::ConstPtr &src, const pc_XYZ_t::ConstPtr &tgt, pc_XYZ_t &res);
+        Eigen::Affine3d pair_align(const pc_XYZ_t::ConstPtr &src, const pc_XYZ_t::ConstPtr &tgt, pc_XYZ_t &res);
 
         // consider using non-member functions instead of static methods if applicable to avoid having to define the method signature it in the header
         // also, non-member functions are usable by other objects as well (which makes sense in this case)
@@ -108,6 +110,6 @@ namespace icp_node {
         pc_XYZ_t::Ptr m_static_cloud;
     };
 
-    pc_XYZ_t::Ptr load_cloud(const std::string &filename);
-
 }  // namespace icp_node
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr load_cloud(const std::string &filename);

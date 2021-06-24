@@ -1,6 +1,8 @@
-#include <IcpNode.h>
+#include "IcpNode.h"
 #include <boost/smart_ptr/make_shared_array.hpp>
 #include <mrs_lib/param_loader.h>
+#include <filesystem>
+#include "tools.h"
 // Matous code https://mrs.felk.cvut.cz/gitlab/vrbamato/uav_detect/blob/ouster/src/pcl_selfloc_nodelet.cpp#L420
 
 namespace icp_node {
@@ -12,18 +14,8 @@ namespace icp_node {
         pcl::ScopeTime t1("callback");
         pc_XYZ_t::Ptr input_pt_cloud(new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
-        pcl::CropBox<pcl::PointXYZ> box_filter;
-        box_filter.setMin(Eigen::Vector4f(-0.4, -0.4, -0.4, 1));
-        box_filter.setMax(Eigen::Vector4f(0.4, 0.4, 0.4, 1));
-        box_filter.setNegative(true);
-        box_filter.setInputCloud(input_pt_cloud);
-        box_filter.filter(*input_pt_cloud);
-        float outer_box_size = 25;
-        box_filter.setMin(Eigen::Vector4f(-outer_box_size, -outer_box_size, -outer_box_size, 1));
-        box_filter.setMax(Eigen::Vector4f(outer_box_size, outer_box_size, outer_box_size, 1));
-        box_filter.setNegative(false);
-        box_filter.setInputCloud(input_pt_cloud);
-        box_filter.filter(*input_pt_cloud);
+        tools_box_filter_cloud(input_pt_cloud, 0.4, true);
+        tools_box_filter_cloud(input_pt_cloud, 25, false);
 
         // I don't see why the input filtration should be split between this method and the `processCloud` method
         pcl::VoxelGrid<p_XYZ_t> voxel_filter;
@@ -32,6 +24,7 @@ namespace icp_node {
         voxel_filter.filter(*input_pt_cloud);
 
         process_cloud(input_pt_cloud);
+        m_pub_static_pc.publish(m_static_cloud);
     }
 
     // in robotics, "position" typically only means a point in space, whereas "pose" includes orientation
@@ -54,7 +47,7 @@ namespace icp_node {
         } else {
             // Find the transformation to align the current message to the previous cloud
             auto aligned_input_cloud = boost::make_shared<pc_XYZ_t>();
-            auto align_transformation = pair_align(msg_input_cloud, m_previous_cloud, *aligned_input_cloud);
+            Eigen::Affine3d align_transformation = pair_align(msg_input_cloud, m_previous_cloud, *aligned_input_cloud);
             // update the estimated global TF
             m_global_transformation = align_transformation * m_global_transformation;
 
@@ -78,8 +71,6 @@ namespace icp_node {
             }
 
             if (m_pub_orig.getNumSubscribers() > 0) {
-                // Avoid `new`! You *rarely* need it. `make_shared` or `make_unique` is exception-safe, use that instead.
-                // Also, avoid using names such as `tmp...` etc., use descriptive names whenever possible.
                 pc_XYZ_t::Ptr tfd_orig_pc = boost::make_shared<pc_XYZ_t>();
                 pcl::transformPointCloud(*m_origin_cloud, *tfd_orig_pc, m_global_transformation.inverse());
                 tfd_orig_pc->header.stamp = msg_input_cloud->header.stamp;
@@ -87,8 +78,9 @@ namespace icp_node {
             }
 
             // ground-truth transformation from origin (first received pose) to the current UAV pose
-            const Eigen::Affine3f orig2cur_tf_gt = m_origin_gt_pose.inverse() * m_latest_gt_pose;
-            const auto epsilon = compare_two_poses(m_global_transformation, orig2cur_tf_gt);
+            const Eigen::Affine3d orig2cur_tf_gt = m_origin_gt_pose.inverse() * m_latest_gt_pose;
+            const auto epsilon = compare_two_poses(static_cast<const Eigen::Affine3f>(m_global_transformation),
+                                                   static_cast<const Eigen::Affine3f>(orig2cur_tf_gt));
 
 //            std::cout << "GT translation:  " << orig2cur_tf_gt.translation().transpose() << "\n";
 //            std::cout << "ICP translation: " << m_global_transformation.translation().transpose() << "\n";
@@ -101,11 +93,10 @@ namespace icp_node {
     }
 
     void IcpNode::onInit() {
-        // this is how you should get a node handle in a nodelet
         ros::NodeHandle nh = nodelet::Nodelet::getMTPrivateNodeHandle();
 
-        // I recommend using the mrs_lib::ParamLoader for easier parameter loading
         mrs_lib::ParamLoader pl(nh);
+        std::string static_cloud_filename;
         NODELET_INFO("Loading static parameters:");
         pl.loadParam("uav_name", m_uav_name);
         pl.loadParam("map_frame_id", m_map_frame_id);
@@ -113,7 +104,8 @@ namespace icp_node {
         pl.loadParam("icp/euclidean_fitness_epsilon", m_icp_fitness_eps);
         pl.loadParam("icp/transformation_epsilon", m_icp_tf_eps);
         pl.loadParam("icp/maximum_iterations", m_icp_max_its);
-        auto static_cloud_filename = pl.loadParam2<std::string>("static_cloud_filename");
+        pl.loadParam("static_cloud_filename", static_cloud_filename);
+//        auto static_cloud_filename = pl.loadParam2<std::string>("icp/static_cloud_filename");
 
         // handle missing parameters
         if (!pl.loadedSuccessfully()) {
@@ -124,15 +116,15 @@ namespace icp_node {
 
         m_pub_orig = nh.advertise<pc_XYZ_t>("aligned_orig", 1);
         m_pub_last = nh.advertise<pc_XYZ_t>("aligned_prev", 1);
+        m_pub_static_pc = nh.advertise<sensor_msgs::PointCloud2>("static_pc", 1, true);
         m_sub_pc = nh.subscribe("points_in", 1, &IcpNode::callback_cloud, this);
         m_sub_position = nh.subscribe("ground_truth", 1, &IcpNode::callback_pose, this);
-        m_pub_static_pc = nh.advertise<sensor_msgs::PointCloud2>("static_pc", 1, true);
         m_apriori_map_initialized = false;
 
         initialize_static_map(static_cloud_filename);
     }
 
-    Eigen::Affine3f
+    Eigen::Affine3d
     IcpNode::pair_align(const pc_XYZ_t::ConstPtr &src,
                         const pc_XYZ_t::ConstPtr &tgt,
                         pc_XYZ_t &res) {
@@ -151,7 +143,7 @@ namespace icp_node {
 
         icp.align(res);
 
-        return Eigen::Affine3f(icp.getFinalTransformation().cast<float>());
+        return Eigen::Affine3d(icp.getFinalTransformation().cast<double>());
     }
 
     void IcpNode::initialize_static_map(const std::string &filename) {
@@ -188,7 +180,7 @@ namespace icp_node {
 
             const ros::Time stamp = ros::Time::now();
             pcl_conversions::toPCL(stamp, tfd_static_cloud->header.stamp);
-            m_pub_static_pc.publish(tfd_static_cloud);
+            m_pub_static_pc.publish(m_static_cloud);
         }
         m_apriori_map_initialized = true;
     }
@@ -200,5 +192,52 @@ namespace icp_node {
     }
 
 }  // namespace icp_node
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr load_cloud(const std::string &filename) {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    std::ifstream fs;
+    std::cout << std::filesystem::current_path() << std::endl;
+    fs.open(filename.c_str(), std::ios::binary);
+    if (!fs.is_open() || fs.fail()) {
+        PCL_ERROR("Could not open file '%s'! Error : %s\n", filename.c_str(), strerror(errno));
+        fs.close();
+        return nullptr;
+    }
+
+    while (!fs.eof()) {
+        std::string line;
+        std::getline(fs, line);
+        // Ignore empty lines
+        if (line.empty())
+            continue;
+
+        // Tokenize the line
+        boost::trim(line);
+        /* const std::vector<std::string> st = split(line, ' '); */
+        std::vector<std::string> st;
+        boost::split(st, line, boost::is_any_of("\t\r "), boost::token_compress_on);
+
+        if (st.size() != 3) {
+            PCL_WARN("Read line with a wrong number of elements: %d (expected 3). The line: '%s'.", (int) st.size(),
+                     line.c_str());
+            continue;
+        }
+
+        cloud->push_back(pcl::PointXYZ(
+                float(atof(st[0].c_str())),
+                float(atof(st[1].c_str())),
+                float(atof(st[2].c_str()))
+        ));
+
+        if (cloud->size() % 100000 == 0)
+            PCL_INFO("Loaded %lu points so far.\r\n", cloud->size());
+    }
+    fs.close();
+
+    cloud->width = cloud->size();
+    cloud->height = 1;
+    cloud->is_dense = true;
+    return cloud;
+}
 
 PLUGINLIB_EXPORT_CLASS(icp_node::IcpNode, nodelet::Nodelet);

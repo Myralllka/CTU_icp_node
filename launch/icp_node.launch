@@ -28,6 +28,7 @@
 
             <!-- Parameters loaded from launch file -->
             <param name="uav_name" value="$(arg UAV_NAME)"/>
+            <param name="static_cloud_filename" value='$(find icp_node)/export.xyz'/>
 
             <!-- ROS parameters config file -->
             <rosparam file="$(find icp_node)/config/localization.yaml"/>
@@ -37,7 +38,7 @@
             <remap from="~ground_truth" to="ground_truth"/>
 
             <!-- Map name -->
-            <param name="map_frame_id" value="$(arg uav_name)/map_origin"/>
+            <param name="map_frame_id" value="$(arg UAV_NAME)/local_origin"/>
         </node>
 
     </group>

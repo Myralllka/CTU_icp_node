@@ -10,8 +10,8 @@ windows:
   - gazebo:
       layout: tiled
       panes:
-#        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_file:='$(find eagle_gazebo_resources)/worlds/cisarsky_ostrov.world'
-        - waitForRos; roslaunch mrs_simulation simulation.launch world_name:=forest gui:=false
+        - waitForRos; roslaunch mrs_simulation simulation.launch gui:=false world_file:='$(find eagle_gazebo_resources)/worlds/cisarsky_ostrov.world'
+#        - waitForRos; roslaunch mrs_simulation simulation.launch world_name:=forest gui:=false
         - waitForOdometry; gz camera -c gzclient_camera -f uav1; history -s gz camera -c gzclient_camera -f uav1
   - status:
       layout: tiled

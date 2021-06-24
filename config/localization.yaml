@@ -3,4 +3,3 @@ icp:
   maximum_iterations: 100
   transformation_epsilon: 0.00000001
   euclidean_fitness_epsilon: 0
-  static_cloud_filename: export.xyz
