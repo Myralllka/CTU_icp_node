@@ -19,7 +19,6 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_representation.h>
 #include <pcl/filters/filter.h>
 #include <pcl/features/normal_3d.h>
@@ -52,6 +51,10 @@ namespace icp_node {
 
         void process_cloud(const pc_XYZ_t::ConstPtr &msg_input_cloud);
 
+        [[maybe_unused]] void straight_forward_approach(const pc_XYZ_t::ConstPtr &msg_input_cloud);
+
+        [[maybe_unused]] void iterative_approach(const pc_XYZ_t::ConstPtr &msg_input_cloud);
+
         void initialize_static_map(const std::string &filename);
 
     private:
@@ -77,6 +80,7 @@ namespace icp_node {
         std::mutex m_processing_mutex;
         pc_XYZ_t::ConstPtr m_origin_cloud;
         pc_XYZ_t::ConstPtr m_previous_cloud;
+        pc_XYZ_t::Ptr m_static_cloud;
         Eigen::Affine3d m_global_transformation = Eigen::Affine3d::Identity();
 
         Eigen::Affine3d pair_align(const pc_XYZ_t::ConstPtr &src, const pc_XYZ_t::ConstPtr &tgt, pc_XYZ_t &res);
@@ -87,29 +91,31 @@ namespace icp_node {
         /*                                                        const geometry_msgs::TransformStamped &target); */
 
         // | --------------- Parameters, loaded from ROS -------------- |
-    private:
         std::string m_uav_name;
 
         float m_icp_max_corr_dist;
         float m_icp_fitness_eps;
         float m_icp_tf_eps;
+        int m_icp_max_its;
+
 
         const float m_apriori_map_voxelgrid_leaf_size = 0.5;
         const float m_apriori_map_tf_x = -467.0;
+//        const float m_apriori_map_tf_x = 0.0;
         const float m_apriori_map_tf_y = -102.0;
+//        const float m_apriori_map_tf_y = 0.0;
         const float m_apriori_map_tf_z = 3.0;
         const float m_apriori_map_tf_yaw = 0.0;
         const float m_apriori_map_correction_x = -3.0;
+//        const float m_apriori_map_correction_x = 0.0;
         const float m_apriori_map_correction_y = 62.0;
+//        const float m_apriori_map_correction_y = 0.0;
         const float m_apriori_map_correction_z = 0.0;
+
         std::string m_map_frame_id;
+        std::string m_algorithm_type;
 
         bool m_apriori_map_initialized;
-
-        int m_icp_max_its;
-        pc_XYZ_t::Ptr m_static_cloud;
     };
 
 }  // namespace icp_node
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr load_cloud(const std::string &filename);

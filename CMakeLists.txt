@@ -68,7 +68,7 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(IcpNode src/IcpNode.cpp include/IcpNode.h src/tools.cpp src/tools.h include/aliases.h)
+add_library(IcpNode src/IcpNode.cpp include/IcpNode.h src/tools.cpp include/tools.h include/aliases.h src/static_cloud.cpp include/static_cloud.h)
 
 ## Add configure headers for dynamic reconfigure
 #add_dependencies(IcpNode ${PROJECT_NAME}_gencfg)

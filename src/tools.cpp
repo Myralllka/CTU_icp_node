@@ -12,3 +12,10 @@ void tools_box_filter_cloud(const pc_XYZ_t::Ptr &processing_point_cloud, float N
     box_filter.setInputCloud(processing_point_cloud);
     box_filter.filter(*processing_point_cloud);
 }
+
+void tools_voxel_filter_cloud(const pc_XYZ_t::Ptr &processing_point_cloud, float N) {
+    pcl::VoxelGrid<p_XYZ_t> voxel_filter;
+    voxel_filter.setLeafSize(N, N, N);
+    voxel_filter.setInputCloud(processing_point_cloud);
+    voxel_filter.filter(*processing_point_cloud);
+}
