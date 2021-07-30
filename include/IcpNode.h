@@ -100,16 +100,16 @@ namespace icp_node {
 
 
         const float m_apriori_map_voxelgrid_leaf_size = 0.5;
-        const float m_apriori_map_tf_x = -467.0;
-//        const float m_apriori_map_tf_x = 0.0;
-        const float m_apriori_map_tf_y = -102.0;
-//        const float m_apriori_map_tf_y = 0.0;
+//        const float m_apriori_map_tf_x = -467.0;
+        const float m_apriori_map_tf_x = -457;
+//        const float m_apriori_map_tf_y = -102.0;
+        const float m_apriori_map_tf_y = -102;
         const float m_apriori_map_tf_z = 3.0;
         const float m_apriori_map_tf_yaw = 0.0;
+//        const float m_apriori_map_correction_x = -3.0;
         const float m_apriori_map_correction_x = -3.0;
-//        const float m_apriori_map_correction_x = 0.0;
-        const float m_apriori_map_correction_y = 62.0;
-//        const float m_apriori_map_correction_y = 0.0;
+//        const float m_apriori_map_correction_y = 62.0;
+        const float m_apriori_map_correction_y = 0.0;
         const float m_apriori_map_correction_z = 0.0;
 
         std::string m_map_frame_id;

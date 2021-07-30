@@ -38,7 +38,7 @@
             <remap from="~ground_truth" to="ground_truth"/>
 
             <!-- Map name -->
-            <param name="map_frame_id" value="$(arg UAV_NAME)/local_origin"/>
+            <param name="map_frame_id" value="$(arg UAV_NAME)/map_origin"/>
             <!-- algorithm types: simple, iterative, TBD -->
             <param name="algorithm_t" value="simple"/>
         </node>

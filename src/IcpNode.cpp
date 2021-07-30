@@ -18,14 +18,13 @@ namespace icp_node {
         pcl::copyPointCloud(*msg.get(), *input_pt_cloud);
 
         tools_box_filter_cloud(input_pt_cloud, 0.4, true);
-        tools_box_filter_cloud(input_pt_cloud, 25, false);
+        tools_box_filter_cloud(input_pt_cloud, 20, false);
 
         tools_voxel_filter_cloud(input_pt_cloud, 0.5);
 
         process_cloud(input_pt_cloud);
         pcl_conversions::toPCL(ros::Time::now(), m_static_cloud->header.stamp);
         m_pub_static_pc.publish(m_static_cloud);
-        std::cout << "height: " << m_static_cloud.get()->height << "\nwidth: " << m_static_cloud.get()->width << "\n";
     }
 
     // in robotics, "position" typically only means a point in space, whereas "pose" includes orientation
@@ -37,7 +36,7 @@ namespace icp_node {
     }
 
     void IcpNode::process_cloud(const pc_XYZ_t::ConstPtr &msg_input_cloud) {
-        std::lock_guard <std::mutex> lock(m_processing_mutex);
+        std::lock_guard<std::mutex> lock(m_processing_mutex);
         if (m_origin_cloud == nullptr) {
             m_origin_cloud = msg_input_cloud;
             m_previous_cloud = msg_input_cloud;
@@ -89,10 +88,17 @@ namespace icp_node {
 
     [[maybe_unused]] void IcpNode::straight_forward_approach(const pc_XYZ_t::ConstPtr &msg_input_cloud) {
         auto aligned_pc = boost::make_shared<pc_XYZ_t>();
-        auto transformation = pair_align(msg_input_cloud, m_origin_cloud, *aligned_pc);
-        if (m_pub_last.getNumSubscribers() > 0) {
-            aligned_pc->header.stamp = msg_input_cloud->header.stamp;
-            m_pub_last.publish(aligned_pc);
+        pcl::copyPointCloud(*msg_input_cloud.get(), *aligned_pc);
+        m_global_transformation = pair_align(msg_input_cloud, m_origin_cloud, *aligned_pc);
+
+        {
+            geometry_msgs::TransformStamped msg;
+            pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg.header.stamp);
+            msg.header.frame_id = m_uav_name + "/local_origin";
+            msg.child_frame_id = m_uav_name + "/icp_origin";
+            msg.transform = tf2::eigenToTransform(
+                    static_cast<const Eigen::Affine3d>(m_global_transformation.inverse())).transform;
+            m_tf_broadcaster.sendTransform(msg);
         }
 
         if (m_pub_orig.getNumSubscribers() > 0) {
@@ -101,44 +107,21 @@ namespace icp_node {
             tfd_orig_pc->header.stamp = msg_input_cloud->header.stamp;
             m_pub_orig.publish(tfd_orig_pc);
         }
-//            // Find the transformation to align the current message to the previous cloud
-//            auto aligned_input_cloud = boost::make_shared<pc_XYZ_t>();
-//            Eigen::Affine3d align_transformation = pair_align(msg_input_cloud, m_previous_cloud, *aligned_input_cloud);
-//            // update the estimated global TF
-//            m_global_transformation = align_transformation * m_global_transformation;
-//
-//            // Publish the latest tf2 transformation
-//            {
-//                // Use blocks (curly braces) to control scope of local variables and avoid accidentally using them further down.
-//                // Also, when you do something like this, consider moving it to a separate function.
-//                geometry_msgs::TransformStamped msg;
-//                pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg.header.stamp);
-//                msg.header.frame_id = m_uav_name + "/local_origin";
-//                msg.child_frame_id = m_uav_name + "/icp_origin";
-//                msg.transform = tf2::eigenToTransform(
-//                        static_cast<const Eigen::Affine3d>(m_global_transformation.inverse())).transform;
-//                m_tf_broadcaster.sendTransform(msg);
-//            }
-//
-//            // publish some debug aligned pointclouds if requested
-//            if (m_pub_last.getNumSubscribers() > 0) {
-//                aligned_input_cloud->header.stamp = msg_input_cloud->header.stamp;
-//                m_pub_last.publish(aligned_input_cloud);
-//            }
-//
-//            if (m_pub_orig.getNumSubscribers() > 0) {
-//                pc_XYZ_t::Ptr tfd_orig_pc = boost::make_shared<pc_XYZ_t>();
-//                pcl::transformPointCloud(*m_origin_cloud, *tfd_orig_pc, m_global_transformation.inverse());
-//                tfd_orig_pc->header.stamp = msg_input_cloud->header.stamp;
-//                m_pub_orig.publish(tfd_orig_pc);
-//            }
-//
-//            // ground-truth transformation from origin (first received pose) to the current UAV pose
-//            const Eigen::Affine3d orig2cur_tf_gt = m_origin_gt_pose.inverse() * m_latest_gt_pose;
-//            const auto epsilon = compare_two_poses(static_cast<const Eigen::Affine3f>(m_global_transformation),
-//                                                   static_cast<const Eigen::Affine3f>(orig2cur_tf_gt));
-//
-        m_previous_cloud = msg_input_cloud;
+
+        if (m_pub_last.getNumSubscribers() > 0) {
+            aligned_pc->header.stamp = msg_input_cloud->header.stamp;
+            aligned_pc->header.frame_id = m_uav_name + "/local_origin";
+            m_pub_last.publish(aligned_pc);
+        }
+//        m_previous_cloud = msg_input_cloud;
+        const Eigen::Affine3d orig2cur_tf_gt = m_origin_gt_pose.inverse() * m_latest_gt_pose;
+        const auto epsilon = compare_two_poses(static_cast<const Eigen::Affine3f>(m_global_transformation),
+                                               static_cast<const Eigen::Affine3f>(orig2cur_tf_gt));
+
+        std::cout << "GT translation:  " << orig2cur_tf_gt.translation().transpose() << "\n";
+        std::cout << "ICP translation: " << m_global_transformation.translation().transpose() << "\n";
+        std::cout << "\ttransformation error is: " << epsilon.first << "m.\n"
+                  << "\trotation error is: " << epsilon.second / M_PI * 180.0 << "deg.\n";
     }
 
     [[maybe_unused]] void IcpNode::iterative_approach(const pc_XYZ_t::ConstPtr &msg_input_cloud) {
@@ -150,8 +133,6 @@ namespace icp_node {
 
         // Publish the latest tf2 transformation
         {
-            // Use blocks (curly braces) to control scope of local variables and avoid accidentally using them further down.
-            // Also, when you do something like this, consider moving it to a separate function.
             geometry_msgs::TransformStamped msg;
             pcl_conversions::fromPCL(msg_input_cloud->header.stamp, msg.header.stamp);
             msg.header.frame_id = m_uav_name + "/local_origin";
@@ -179,13 +160,10 @@ namespace icp_node {
         const auto epsilon = compare_two_poses(static_cast<const Eigen::Affine3f>(m_global_transformation),
                                                static_cast<const Eigen::Affine3f>(orig2cur_tf_gt));
 
-//            std::cout << "GT translation:  " << orig2cur_tf_gt.translation().transpose() << "\n";
-//            std::cout << "ICP translation: " << m_global_transformation.translation().transpose() << "\n";
-//            std::cout << "\ttransformation error is: " << epsilon.first << "m.\n"
-//                      << "\trotation error is: " << epsilon.second / M_PI * 180.0 << "deg.\n";
-        std::cout << "width: " << m_static_cloud.get()->width <<
-                  "\nheight: " << m_static_cloud.get()->height <<
-                  "\npoints: " << m_static_cloud.get()->points.size() << "\n";
+        std::cout << "GT translation:  " << orig2cur_tf_gt.translation().transpose() << "\n";
+        std::cout << "ICP translation: " << m_global_transformation.translation().transpose() << "\n";
+        std::cout << "\ttransformation error is: " << epsilon.first << "m.\n"
+                  << "\trotation error is: " << epsilon.second / M_PI * 180.0 << "deg.\n";
         // update the previous cloud message
         m_previous_cloud = msg_input_cloud;
     }

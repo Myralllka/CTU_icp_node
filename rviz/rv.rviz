@@ -479,8 +479,8 @@ Visualization Manager:
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 17.823806762695312
-        Min Value: -3.5699596405029297
+        Max Value: 12.678765296936035
+        Min Value: -2.3593735694885254
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -488,7 +488,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -503,7 +503,7 @@ Visualization Manager:
       Unreliable: true
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -516,7 +516,7 @@ Visualization Manager:
       Color: 255; 0; 0
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -531,7 +531,7 @@ Visualization Manager:
       Unreliable: true
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -568,7 +568,7 @@ Visualization Manager:
       Radius: 0.10000000149011612
       Reference Frame: uav1/icp_origin
       Value: true
-    - Alpha: 0
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 6.696621417999268
@@ -624,7 +624,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 14.333858489990234
+      Distance: 33.27552795410156
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -640,9 +640,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2897971570491791
+      Pitch: 0.8597971796989441
       Target Frame: uav1/fcu
-      Yaw: 0.540401041507721
+      Yaw: 4.599939346313477
     Saved: ~
 Window Geometry:
   Displays:
@@ -661,4 +661,4 @@ Window Geometry:
     collapsed: false
   Width: 1843
   X: 1
-  Y: 33
+  Y: 29
